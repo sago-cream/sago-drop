@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 private let scale: CGFloat = 2
-private let canvasSize = CGSize(width: 520, height: 420)
+private let canvasSize = CGSize(width: 760, height: 450)
 private let renderedSize = CGSize(width: canvasSize.width * scale, height: canvasSize.height * scale)
 private let menuWidth: CGFloat = 250
 private let menuBarHeight: CGFloat = 30
@@ -32,7 +32,7 @@ private enum MockupState: String {
     case before
     case after
 
-    var includesOpenAtLogin: Bool { self == .after }
+    var usesSmartSharing: Bool { self == .after }
 }
 
 private struct MenuMockupView: View {
@@ -52,6 +52,12 @@ private struct MenuMockupView: View {
             menu
                 .padding(.leading, 245)
                 .padding(.top, menuBarHeight + 1)
+
+            if state.usesSmartSharing {
+                discordLimitMenu
+                    .padding(.leading, 245 + menuWidth + 2)
+                    .padding(.top, menuBarHeight + 110)
+            }
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
         .preferredColorScheme(.dark)
@@ -71,19 +77,40 @@ private struct MenuMockupView: View {
 
     private var menu: some View {
         VStack(spacing: 0) {
-            MenuRow("Upload Files…", shortcut: "⌘O")
-            MenuRow("Upload Copied Files", shortcut: "⇧⌘V")
+            MenuRow(state.usesSmartSharing ? "Share Files…" : "Upload Files…", shortcut: "⌘O")
+            MenuRow(state.usesSmartSharing ? "Share Copied Files" : "Upload Copied Files", shortcut: "⇧⌘V")
+            if state.usesSmartSharing {
+                MenuRow("Upload as Link…")
+            }
             MenuRow("Save Clipboard", shortcut: "⌘V")
             MenuSeparator()
+            if state.usesSmartSharing {
+                MenuRow("Discord Upload Limit", shortcut: "›")
+                MenuSeparator()
+            }
             MenuRow("Sign In")
             MenuSeparator()
-            if state.includesOpenAtLogin {
-                MenuRow("Open at Login")
-            }
+            MenuRow("Open at Login")
             MenuRow("Quit")
         }
         .padding(.vertical, 5)
         .frame(width: menuWidth)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.white.opacity(0.14), lineWidth: 0.5)
+        }
+        .shadow(color: .black.opacity(0.4), radius: 18, y: 9)
+    }
+
+    private var discordLimitMenu: some View {
+        VStack(spacing: 0) {
+            MenuRow("✓  Free, 20 MB")
+            MenuRow("    Nitro Basic, 50 MB")
+            MenuRow("    Nitro, 500 MB")
+        }
+        .padding(.vertical, 5)
+        .frame(width: 210)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)

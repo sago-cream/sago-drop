@@ -24,6 +24,7 @@ final class SagoDropAppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        MediaPreparation.cleanUpDiscordCache()
         let model = UploadModel()
         menuBarController = MenuBarController(model: model)
 #if DEBUG
@@ -35,7 +36,7 @@ final class SagoDropAppDelegate: NSObject, NSApplicationDelegate {
                     NSApplication.shared.terminate(nil)
                 }
             }
-            Task { @MainActor in model.upload([URL(fileURLWithPath: testFile)]) }
+            Task { @MainActor in model.uploadAsLinks([URL(fileURLWithPath: testFile)]) }
         }
 #endif
     }
@@ -57,12 +58,21 @@ enum UploadProgressUpdate {
 
 @MainActor
 final class UploadModel {
+    private static let discordUploadLimitKey = "discordUploadLimit"
+
     var isUploading = false
     var message = ""
     var recent: [UploadResult] = []
     var onMenuBarStateChange: ((MenuBarState) -> Void)?
     var onStatus: ((String) -> Void)?
     var isSignedIn: Bool { (try? Keychain.load()) != nil }
+    var discordUploadLimit: DiscordUploadLimit {
+        get {
+            let stored = UserDefaults.standard.object(forKey: Self.discordUploadLimitKey) as? NSNumber
+            return stored.flatMap { DiscordUploadLimit(rawValue: $0.int64Value) } ?? .free
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: Self.discordUploadLimitKey) }
+    }
     var onUploadProgressChange: ((UploadProgressUpdate?) -> Void)?
 #if DEBUG
     var onSmokeTestComplete: ((Bool) -> Void)?
@@ -78,14 +88,24 @@ final class UploadModel {
     }
 
     func chooseFiles() {
+        chooseFiles(forceLink: false)
+    }
+
+    func chooseFilesAsLinks() {
+        chooseFiles(forceLink: true)
+    }
+
+    private func chooseFiles(forceLink: Bool) {
         guard !isUploading else { return }
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.allowedContentTypes = supportedExtensions.compactMap { UTType(filenameExtension: $0) }
-        panel.message = "Choose images or videos to upload"
-        panel.prompt = "Upload"
-        if panel.runModal() == .OK { upload(panel.urls) }
+        panel.message = forceLink ? "Choose images or videos to upload as links" : "Choose images or videos to share"
+        panel.prompt = forceLink ? "Upload" : "Share"
+        if panel.runModal() == .OK {
+            forceLink ? uploadAsLinks(panel.urls) : upload(panel.urls)
+        }
     }
 
     func uploadCopiedFiles() {
@@ -117,6 +137,14 @@ final class UploadModel {
     }
 
     func upload(_ urls: [URL]) {
+        share(urls, forceLink: false)
+    }
+
+    func uploadAsLinks(_ urls: [URL]) {
+        share(urls, forceLink: true)
+    }
+
+    private func share(_ urls: [URL], forceLink: Bool) {
         let urls = urls.filter { $0.isFileURL && supportedExtensions.contains($0.pathExtension.lowercased()) }
         guard !isUploading else { return }
         guard !urls.isEmpty else {
@@ -125,8 +153,47 @@ final class UploadModel {
             return
         }
         isUploading = true
-        message = urls.count == 1 ? "Uploading \(urls[0].lastPathComponent)…" : "Uploading \(urls.count) files…"
+        message = forceLink || urls.count > 1
+            ? (urls.count == 1 ? "Uploading \(urls[0].lastPathComponent)…" : "Uploading \(urls.count) files…")
+            : "Checking \(urls[0].lastPathComponent)…"
         Task {
+            if !forceLink, urls.count == 1 {
+                let sourceURL = urls[0]
+                MediaPreparation.cleanUpDiscordCache()
+                if MediaPreparation.isVideo(sourceURL) {
+                    message = "Preparing \(sourceURL.lastPathComponent) for Discord…"
+                    onMenuBarStateChange?(.converting)
+                }
+                if let prepared = try? await MediaPreparation.prepareForDiscord(
+                    sourceURL,
+                    maximumBytes: discordUploadLimit.rawValue
+                ) {
+                    do {
+                        try copyFile(prepared.url)
+                        isUploading = false
+                        let status = prepared.wasCompressed
+                            ? "Compressed and copied \(sourceURL.lastPathComponent) for Discord"
+                            : "Copied \(sourceURL.lastPathComponent) for Discord"
+                        report(status)
+                        onMenuBarStateChange?(.success)
+#if DEBUG
+                        onSmokeTestComplete?(true)
+#endif
+                        return
+                    } catch {
+                        isUploading = false
+                        report(error.localizedDescription)
+                        onMenuBarStateChange?(.failure)
+                        NSSound.beep()
+#if DEBUG
+                        onSmokeTestComplete?(false)
+#endif
+                        return
+                    }
+                }
+                message = "Uploading \(sourceURL.lastPathComponent) as a link…"
+            }
+
             var failed = false
             var completionStatus = message
             var failureStatus: String?
@@ -226,6 +293,13 @@ final class UploadModel {
     func copy(_ value: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(value, forType: .string)
+    }
+
+    private func copyFile(_ url: URL) throws {
+        NSPasteboard.general.clearContents()
+        guard NSPasteboard.general.writeObjects([url as NSURL]) else {
+            throw MediaError.message("Couldn’t copy the prepared file")
+        }
     }
 }
 

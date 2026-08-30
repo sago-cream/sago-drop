@@ -1,7 +1,7 @@
 <h1 align="center">Sago Drop</h1>
 <div align="center">
 
-  Turn Mac screen recordings that are too large for Discord into links you can paste instead.
+  Fit Mac screen recordings into Discord when quality allows, or turn them into links when it doesn't.
 
   <a href="https://github.com/sago-cream/sago-drop/releases/latest">Download latest release</a>
    ·
@@ -10,19 +10,20 @@
 
 ## Why
 
-Discord rejects videos once they get too large, but sending a link is easy. Drop
-the recording on Sago Drop's menu-bar icon; it normalizes the video locally,
-uploads the video, and copies a share link ready to paste into Discord.
+Discord rejects videos once they get too large. Drop a recording on Sago Drop's
+menu-bar icon and it picks the better route. Files that fit without dropping
+below 720p stay local and are copied for direct attachment. Larger recordings
+are uploaded and copied as share links.
 
 Sago Drop also uploads images and other videos when you want the same quick
 drop-to-link workflow.
 
-- **Drop, paste, or choose:** Upload directly from the menu bar without opening
+- **Drop, paste, or choose:** Share directly from the menu bar without opening
   a full app window, or turn clipboard content into a file in Downloads.
-- **Made for Apple recordings:** Normalize MOV and MP4 files locally to a
-  shareable 1080p H.264 MP4 before upload.
-- **Link copied automatically:** Paste into Discord as soon as the upload
-  finishes.
+- **Made for Apple recordings:** Keep compatible files unchanged or compress
+  MOV and MP4 video locally to a 1080p or 720p H.264 MP4.
+- **Ready to paste:** The clipboard receives either a Discord attachment or a
+  public link.
 - **Native and local where it matters:** The app is signed and notarized, video
   processing stays on the Mac, and its device credential lives in Keychain.
 
@@ -40,37 +41,45 @@ Or download the latest signed and notarized app from
 Requirements:
 
 - macOS 14 Sonoma or newer
-- Access approved by the Sago Media administrator
+- Access approved by the Sago Media administrator for link uploads
 
 ## First Run
 
 1. Open Sago Drop from Applications. It appears in the menu bar instead of the
    Dock.
-2. Choose **Sign In** from its menu.
+2. To enable link fallback, choose **Sign In** from its menu.
 3. Approve the displayed request in your browser.
 
-Uploads work once access is approved. The credential is saved in Keychain, so
-signing in is normally a one-time step.
+Link uploads work once access is approved. Direct Discord attachments do not
+require a Sago Media account. The credential is saved in Keychain, so signing
+in is normally a one-time step.
 
 Choose **Open at Login** from the menu if you want Sago Drop to start when you
 log in to your Mac.
 
-## Upload
+## Share
 
 - Drag supported files directly onto the menu-bar icon.
-- Copy files in Finder and choose **Upload Copied Files** (`⇧⌘V`).
+- Copy a file in Finder and choose **Share Copied Files** (`⇧⌘V`).
 - Copy other content and choose **Save Clipboard** (`⌘V`) to save it as a
   file in Downloads.
-- Choose **Upload Files…** (`⌘O`) to use the standard file picker.
+- Choose **Share Files…** (`⌘O`) to use the standard file picker.
+- Choose **Upload as Link…** to skip the Discord size check.
 
-The menu-bar icon shows conversion and upload progress. After a successful
-upload, the public share URL is copied automatically. The five latest uploads
-remain available under **Recent Uploads**.
+Set **Discord Upload Limit** to Free, Nitro Basic, or Nitro. A single file that
+already fits is copied unchanged. Oversized video is compressed only when it
+can remain at 1080p or 720p. Everything else uses Sago Media. Multiple files
+continue through Sago Media.
+
+The menu-bar icon shows conversion and upload progress. The five latest link
+uploads remain available under **Recent Uploads**.
 
 ## Formats and Limits
 
-- MOV and MP4 videos are normalized locally to 1080p H.264/AAC MP4 and targeted
-  below 80 MB before upload.
+- Direct Discord attachments use the selected 20 MB, 50 MB, or 500 MB limit.
+- Local video compression targets H.264/AAC MP4 and never drops below 720p.
+- Videos routed to Sago Media are normalized locally to 1080p H.264/AAC MP4
+  and targeted below 80 MB before upload.
 - Other supported files must already be under 90 MB.
 - Supported formats: PNG, JPEG, GIF, WebP, MOV, and MP4.
 
@@ -78,13 +87,16 @@ remain available under **Recent Uploads**.
 
 - The device credential is stored in macOS Keychain.
 - Video processing happens locally on the Mac.
+- Prepared Discord attachments remain in the app cache so they are still
+  available when pasted. Sago Drop removes entries older than one day when it
+  launches or prepares another attachment.
 - Files are uploaded to `media.hsichen.dev` and receive a public share URL.
 - Sago Drop has no analytics or background file scanning.
 
 ## Troubleshooting
 
-- **An upload asks you to sign in:** Choose **Sign In** and finish the browser
-  approval before trying again.
+- **Sharing asks you to sign in:** The file could not fit the selected Discord
+  limit without dropping below 720p. Sign in to upload it as a link.
 - **A file is rejected:** Check its format and the limits above. MOV and MP4
   files are prepared locally; images must fit the upload limit already.
 - **Homebrew installed an older version:** Run `brew update`, then

@@ -22,12 +22,12 @@ enum MenuBarState: Equatable {
 
     var accessibilityLabel: String {
         switch self {
-        case .idle: "Sago Drop, ready to upload"
+        case .idle: "Sago Drop, ready to share"
         case .targeted: "Sago Drop, release to upload"
         case .converting: "Sago Drop, converting video"
         case .uploading: "Sago Drop, uploading"
-        case .success: "Sago Drop, link copied"
-        case .failure: "Sago Drop, upload failed"
+        case .success: "Sago Drop, copied"
+        case .failure: "Sago Drop, sharing failed"
         }
     }
 
@@ -215,20 +215,37 @@ final class MenuBarController: NSObject, ObservableObject {
     private func rebuildMenu() {
         menu.removeAllItems()
 
-        menu.addItem(actionItem("Upload Files…", action: #selector(chooseFiles), keyEquivalent: "o", enabled: !model.isUploading))
+        menu.addItem(actionItem("Share Files…", action: #selector(chooseFiles), keyEquivalent: "o", enabled: !model.isUploading))
         menu.addItem(actionItem(
-            "Upload Copied Files",
+            "Share Copied Files",
             action: #selector(uploadCopiedFiles),
             keyEquivalent: "v",
             modifiers: [.command, .shift],
             enabled: !model.isUploading
         ))
+        menu.addItem(actionItem("Upload as Link…", action: #selector(chooseFilesAsLinks), enabled: !model.isUploading))
         menu.addItem(actionItem(
             "Save Clipboard",
             action: #selector(downloadClipboard),
             keyEquivalent: "v",
             enabled: !model.isUploading
         ))
+
+        menu.addItem(.separator())
+        let discordLimitItem = NSMenuItem(title: "Discord Upload Limit", action: nil, keyEquivalent: "")
+        let discordLimitMenu = NSMenu(title: "Discord Upload Limit")
+        for limit in DiscordUploadLimit.allCases {
+            let item = actionItem(
+                limit.title,
+                action: #selector(selectDiscordUploadLimit),
+                enabled: !model.isUploading
+            )
+            item.representedObject = NSNumber(value: limit.rawValue)
+            item.state = model.discordUploadLimit == limit ? .on : .off
+            discordLimitMenu.addItem(item)
+        }
+        discordLimitItem.submenu = discordLimitMenu
+        menu.addItem(discordLimitItem)
 
         if !model.recent.isEmpty {
             menu.addItem(.separator())
@@ -272,6 +289,9 @@ final class MenuBarController: NSObject, ObservableObject {
     }
 
     private func presentStatus(_ status: String) {
+#if DEBUG
+        guard ProcessInfo.processInfo.environment["SAGO_MEDIA_SMOKE_LOG"] != "1" else { return }
+#endif
         guard !UserDefaults.standard.bool(forKey: Self.suppressStatusDialogsKey) else { return }
 
         if let statusAlert {
@@ -314,6 +334,16 @@ final class MenuBarController: NSObject, ObservableObject {
 
     @objc private func chooseFiles() {
         model.chooseFiles()
+    }
+
+    @objc private func chooseFilesAsLinks() {
+        model.chooseFilesAsLinks()
+    }
+
+    @objc private func selectDiscordUploadLimit(_ sender: NSMenuItem) {
+        guard let rawValue = (sender.representedObject as? NSNumber)?.int64Value,
+              let limit = DiscordUploadLimit(rawValue: rawValue) else { return }
+        model.discordUploadLimit = limit
     }
 
     @objc private func copyRecentLink(_ sender: NSMenuItem) {

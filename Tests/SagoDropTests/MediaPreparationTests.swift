@@ -31,6 +31,70 @@ import Testing
     #expect(!prepared.isTemporary)
 }
 
+@Test func keepsSmallDiscordAttachmentsInPlace() async throws {
+    let url = FileManager.default.temporaryDirectory
+        .appending(path: "sago-drop-discord-small-\(UUID().uuidString).png")
+    defer { try? FileManager.default.removeItem(at: url) }
+    try Data("image".utf8).write(to: url)
+
+    let prepared = try #require(try await MediaPreparation.prepareForDiscord(
+        url,
+        maximumBytes: DiscordUploadLimit.free.rawValue
+    ))
+
+    #expect(prepared.url == url)
+    #expect(!prepared.wasCompressed)
+}
+
+@Test func routesOversizedImagesToSagoMedia() async throws {
+    let url = FileManager.default.temporaryDirectory
+        .appending(path: "sago-drop-discord-large-\(UUID().uuidString).png")
+    defer { try? FileManager.default.removeItem(at: url) }
+    FileManager.default.createFile(atPath: url.path, contents: nil)
+    let handle = try FileHandle(forWritingTo: url)
+    try handle.truncate(atOffset: UInt64(DiscordUploadLimit.free.rawValue + 1))
+    try handle.close()
+
+    let prepared = try await MediaPreparation.prepareForDiscord(
+        url,
+        maximumBytes: DiscordUploadLimit.free.rawValue
+    )
+
+    #expect(prepared == nil)
+}
+
+@Test func choosesDiscordQualityWithoutDroppingBelow720p() {
+    #expect(MediaPreparation.discordPreset(durationSeconds: 20, maximumBytes: 20_000_000) == .p1080)
+    #expect(MediaPreparation.discordPreset(durationSeconds: 30, maximumBytes: 20_000_000) == .p720)
+    #expect(MediaPreparation.discordPreset(durationSeconds: 60, maximumBytes: 20_000_000) == nil)
+
+    #expect(MediaPreparation.discordPreset(durationSeconds: 60, maximumBytes: 50_000_000) == .p1080)
+    #expect(MediaPreparation.discordPreset(durationSeconds: 120, maximumBytes: 50_000_000) == .p720)
+    #expect(MediaPreparation.discordPreset(durationSeconds: 180, maximumBytes: 50_000_000) == nil)
+}
+
+@MainActor
+@Test func preparesOversizedVideoForDiscordCache() async throws {
+    let source = FileManager.default.temporaryDirectory
+        .appending(path: "sago-drop-discord-source-\(UUID().uuidString).mp4")
+    defer { try? FileManager.default.removeItem(at: source) }
+    try await createTestVideo(at: source)
+    let handle = try FileHandle(forWritingTo: source)
+    try handle.seekToEnd()
+    try handle.write(contentsOf: Data(count: 200_000))
+    try handle.close()
+
+    let prepared = try #require(try await MediaPreparation.prepareForDiscord(
+        source,
+        maximumBytes: 100_000
+    ))
+    defer { try? FileManager.default.removeItem(at: prepared.url.deletingLastPathComponent()) }
+
+    #expect(prepared.wasCompressed)
+    #expect(prepared.url.lastPathComponent == source.lastPathComponent)
+    #expect((try prepared.url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? .max) <= 100_000)
+}
+
 @MainActor
 @Test func preparesMp4AsANewLocalUpload() async throws {
     let source = FileManager.default.temporaryDirectory

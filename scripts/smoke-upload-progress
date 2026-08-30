@@ -7,8 +7,8 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const smokeDirectory = await mkdtemp(join(tmpdir(), "sago-media-upload-smoke-"));
-const successFile = join(smokeDirectory, "progress-success.mp4");
-const failureFile = join(smokeDirectory, "progress-fail.mp4");
+const successFile = join(smokeDirectory, "progress-success.png");
+const failureFile = join(smokeDirectory, "progress-fail.png");
 
 await Bun.write(successFile, new Uint8Array(12 * 1024 * 1024));
 await Bun.write(failureFile, new Uint8Array(6 * 1024 * 1024));
@@ -49,7 +49,7 @@ async function run(command) {
 }
 
 async function runScenario(name, file, expectedMarkers) {
-  const process = Bun.spawn([join(root, ".build/debug/SagoMedia")], {
+  const process = Bun.spawn([join(root, ".build/debug/SagoDrop")], {
     cwd: root,
     env: {
       ...Bun.env,
