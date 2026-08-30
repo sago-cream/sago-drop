@@ -1,7 +1,13 @@
 <h1 align="center">Sago Drop</h1>
 <div align="center">
 
+  <img src="assets/sago-drop-logo.svg" alt="Sago Drop logo" width="128" />
+
+  <br />
+
   Fit Mac screen recordings into Discord when quality allows, or turn them into links when it doesn't.
+
+  <img src="assets/demo.png" alt="Sago Drop menu bar menu" width="680" />
 
   <a href="https://github.com/sago-cream/sago-drop/releases/latest">Download latest release</a>
    ·

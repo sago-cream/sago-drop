@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="title description">
-  <title id="title">Sago Drop</title>
-  <desc id="description">A two-way S arrow dropping into a tray.</desc>
-  <rect width="800" height="800" rx="176" fill="#8ED8F4"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-label="Sago Drop">
   <g id="sago-drop-mark" fill="#FFFFFF">
     <g transform="matrix(1.714286,0,0,0.614334,9.142857,270.338118)">
       <path d="M130,429.3L130,663.7C130,679.871 125.295,693 119.5,693L98.5,693C92.705,693 88,679.871 88,663.7L88,429.3C88,413.129 92.705,400 98.5,400L119.5,400C125.295,400 130,413.129 130,429.3Z"/>

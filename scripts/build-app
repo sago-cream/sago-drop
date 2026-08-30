@@ -4,11 +4,32 @@ set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 version="${SAGO_DROP_VERSION:-0.1.0}"
 build_number="${SAGO_DROP_BUILD_NUMBER:-1}"
+icon_source="$root/assets/sago-drop-logo.svg"
+iconset="$root/.build/SagoDrop.iconset"
+generated_icon="$root/.build/SagoDrop.icns"
 swift build --package-path "$root" -c release
 
 bundle="$root/.build/Sago Drop.app"
-mkdir -p "$bundle/Contents/MacOS"
+rm -rf "$bundle"
+mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources/assets"
 cp "$root/.build/release/SagoDrop" "$bundle/Contents/MacOS/SagoDrop"
+cp "$root/assets/sago-drop-logo.svg" "$bundle/Contents/Resources/assets/sago-drop-logo.svg"
+cp "$root/assets/sago-drop-mark.svg" "$bundle/Contents/Resources/assets/sago-drop-mark.svg"
+
+rm -rf "$iconset"
+mkdir -p "$iconset"
+sips -s format png -z 16 16 "$icon_source" --out "$iconset/icon_16x16.png" >/dev/null
+sips -s format png -z 32 32 "$icon_source" --out "$iconset/icon_16x16@2x.png" >/dev/null
+sips -s format png -z 32 32 "$icon_source" --out "$iconset/icon_32x32.png" >/dev/null
+sips -s format png -z 64 64 "$icon_source" --out "$iconset/icon_32x32@2x.png" >/dev/null
+sips -s format png -z 128 128 "$icon_source" --out "$iconset/icon_128x128.png" >/dev/null
+sips -s format png -z 256 256 "$icon_source" --out "$iconset/icon_128x128@2x.png" >/dev/null
+sips -s format png -z 256 256 "$icon_source" --out "$iconset/icon_256x256.png" >/dev/null
+sips -s format png -z 512 512 "$icon_source" --out "$iconset/icon_256x256@2x.png" >/dev/null
+sips -s format png -z 512 512 "$icon_source" --out "$iconset/icon_512x512.png" >/dev/null
+sips -s format png -z 1024 1024 "$icon_source" --out "$iconset/icon_512x512@2x.png" >/dev/null
+iconutil -c icns "$iconset" -o "$generated_icon"
+cp "$generated_icon" "$bundle/Contents/Resources/SagoDrop.icns"
 printf '%s\n' \
   '<?xml version="1.0" encoding="UTF-8"?>' \
   '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
@@ -17,6 +38,7 @@ printf '%s\n' \
   '<key>CFBundleIdentifier</key><string>dev.hsichen.SagoDrop</string>' \
   '<key>CFBundleName</key><string>Sago Drop</string>' \
   '<key>CFBundlePackageType</key><string>APPL</string>' \
+  '<key>CFBundleIconFile</key><string>SagoDrop</string>' \
   "<key>CFBundleShortVersionString</key><string>$version</string>" \
   "<key>CFBundleVersion</key><string>$build_number</string>" \
   '<key>NSHumanReadableCopyright</key><string>Copyright © 2026 Hsi Chen</string>' \

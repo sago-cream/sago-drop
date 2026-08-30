@@ -309,6 +309,7 @@ final class MenuBarController: NSObject, ObservableObject {
             alert.messageText = "Sago Drop"
             alert.informativeText = status
             alert.alertStyle = .informational
+            alert.icon = AppResources.appIcon
             alert.addButton(withTitle: "OK")
             alert.showsSuppressionButton = true
             alert.suppressionButton?.title = "Don't show this again"
@@ -437,6 +438,14 @@ private struct MenuBarIcon: View {
     @ObservedObject var controller: MenuBarController
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private static let brandedIcon: NSImage? = {
+        guard let image = AppResources.menuBarIcon else { return nil }
+        image.size = NSSize(width: 16, height: 16)
+        image.isTemplate = true
+        image.accessibilityDescription = "Sago Drop"
+        return image
+    }()
+
     var body: some View {
         Group {
             if #available(macOS 26.0, *) {
@@ -473,7 +482,12 @@ private struct MenuBarIcon: View {
     }
 
     private var currentIcon: Image {
-        Image(systemName: controller.displayedState.symbolName)
+        if controller.displayedState == .idle || controller.displayedState == .targeted,
+           let brandedIcon = Self.brandedIcon
+        {
+            return Image(nsImage: brandedIcon)
+        }
+        return Image(systemName: controller.displayedState.symbolName)
     }
 
     @ViewBuilder

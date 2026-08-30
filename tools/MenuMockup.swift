@@ -6,6 +6,7 @@ private let canvasSize = CGSize(width: 760, height: 450)
 private let renderedSize = CGSize(width: canvasSize.width * scale, height: canvasSize.height * scale)
 private let menuWidth: CGFloat = 250
 private let menuBarHeight: CGFloat = 30
+private let menuBarLogo = NSImage(contentsOfFile: "assets/sago-drop-mark.svg")
 
 @main
 @MainActor
@@ -69,9 +70,12 @@ private struct MenuMockupView: View {
                 .fill(Color.white.opacity(0.18))
                 .frame(width: 30, height: 24)
 
-            Image(systemName: "square.and.arrow.up")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.white)
+            if let menuBarLogo {
+                Image(nsImage: menuBarLogo)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+            }
         }
     }
 
