@@ -9,6 +9,16 @@ import Testing
     #expect(!StatusNotice.attention("Sign in before uploading").canBeSuppressed)
 }
 
+@Test func remembersPublicUploadDisclosureAcceptance() throws {
+    let suiteName = "SagoDropTests-PublicUploadDisclosure-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    #expect(!PublicUploadDisclosure.isAccepted(in: defaults))
+    PublicUploadDisclosure.accept(in: defaults)
+    #expect(PublicUploadDisclosure.isAccepted(in: defaults))
+}
+
 @Test func rejectsOversizedNonVideoBeforeUpload() async throws {
     let url = FileManager.default.temporaryDirectory
         .appending(path: "sago-drop-oversized-\(UUID().uuidString).png")

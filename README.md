@@ -96,6 +96,7 @@ uploads remain available under **Recent Uploads**.
   available when pasted. Sago Drop removes entries older than one day when it
   launches or prepares another attachment.
 - Files are uploaded to `media.hsichen.dev` and receive a public share URL.
+- Sago Drop asks for confirmation before the first public link upload.
 - Sago Drop has no analytics or background file scanning.
 
 ## Troubleshooting
