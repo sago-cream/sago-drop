@@ -52,6 +52,19 @@ struct UploadResult: Identifiable, Decodable {
     enum CodingKeys: String, CodingKey { case url, markdown, previewUrl }
 }
 
+struct StatusNotice: Equatable {
+    let text: String
+    let canBeSuppressed: Bool
+
+    static func completion(_ text: String) -> Self {
+        Self(text: text, canBeSuppressed: true)
+    }
+
+    static func attention(_ text: String) -> Self {
+        Self(text: text, canBeSuppressed: false)
+    }
+}
+
 enum UploadProgressUpdate {
     case transferring(Double)
     case processing
@@ -65,7 +78,7 @@ final class UploadModel {
     var message = ""
     var recent: [UploadResult] = []
     var onMenuBarStateChange: ((MenuBarState) -> Void)?
-    var onStatus: ((String) -> Void)?
+    var onStatus: ((StatusNotice) -> Void)?
     var isSignedIn: Bool { (try? Keychain.load()) != nil }
     var discordUploadLimit: DiscordUploadLimit {
         get {
@@ -105,7 +118,7 @@ final class UploadModel {
         let urls = (NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: options) as? [NSURL])?
             .map { $0 as URL } ?? []
         guard !urls.isEmpty else {
-            report("Copy a supported file first")
+            reportAttention("Copy a supported file first")
             NSSound.beep()
             return
         }
@@ -116,13 +129,13 @@ final class UploadModel {
         guard !isUploading else { return }
         do {
             guard let url = try ClipboardFile.create() else {
-                report("Clipboard is empty or unsupported")
+                reportAttention("Clipboard is empty or unsupported")
                 NSSound.beep()
                 return
             }
             report("Saved \(url.lastPathComponent) to Downloads")
         } catch {
-            report("Couldn’t save to Downloads")
+            reportAttention("Couldn’t save to Downloads")
             NSSound.beep()
         }
     }
@@ -131,7 +144,7 @@ final class UploadModel {
         let urls = urls.filter { $0.isFileURL && supportedExtensions.contains($0.pathExtension.lowercased()) }
         guard !isUploading else { return }
         guard !urls.isEmpty else {
-            report("Choose PNG, JPEG, GIF, WebP, MOV, or MP4 files")
+            reportAttention("Choose PNG, JPEG, GIF, WebP, MOV, or MP4 files")
             NSSound.beep()
             return
         }
@@ -169,7 +182,7 @@ final class UploadModel {
                         return
                     } catch {
                         isUploading = false
-                        report(error.localizedDescription)
+                        reportAttention(error.localizedDescription)
                         onMenuBarStateChange?(.failure)
                         NSSound.beep()
 #if DEBUG
@@ -233,7 +246,11 @@ final class UploadModel {
                 }
             }
             isUploading = false
-            report(failureStatus ?? completionStatus)
+            if let failureStatus {
+                reportAttention(failureStatus)
+            } else {
+                report(completionStatus)
+            }
             onMenuBarStateChange?(failed ? .failure : .success)
 #if DEBUG
             onSmokeTestComplete?(!failed)
@@ -250,11 +267,11 @@ final class UploadModel {
                 let device = try await api.startLogin()
                 message = "Approve code \(device.userCode) in your browser"
                 NSWorkspace.shared.open(device.verificationUri)
-                onStatus?(message)
+                reportAttention(message)
                 _ = try await api.waitForApproval(device)
                 report("Signed in")
             } catch {
-                report(error.localizedDescription)
+                reportAttention(error.localizedDescription)
                 NSSound.beep()
             }
             isUploading = false
@@ -267,14 +284,19 @@ final class UploadModel {
             try Keychain.delete()
             report("Signed out")
         } catch {
-            report(error.localizedDescription)
+            reportAttention(error.localizedDescription)
             NSSound.beep()
         }
     }
 
     func report(_ status: String) {
         message = status
-        onStatus?(status)
+        onStatus?(.completion(status))
+    }
+
+    func reportAttention(_ status: String) {
+        message = status
+        onStatus?(.attention(status))
     }
 
     func copy(_ value: String) {
