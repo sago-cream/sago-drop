@@ -52,6 +52,9 @@ Requirements:
 Uploads work once access is approved. The credential is saved in Keychain, so
 signing in is normally a one-time step.
 
+Choose **Open at Login** from the menu if you want Sago Drop to start when you
+log in to your Mac.
+
 ## Upload
 
 - Drag supported files directly onto the menu-bar icon.
@@ -112,6 +115,12 @@ scripts/smoke-upload-progress
 
 The suite uses a throttled localhost server and debug-only credentials to test
 successful and failed uploads without reading Keychain or creating public media.
+
+Generate matched menu screenshots for visual review:
+
+```bash
+scripts/menu-mockups
+```
 
 ## Maintainer Release
 

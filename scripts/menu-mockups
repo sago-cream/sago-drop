@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+output_dir="${1:-$root/.build/menu-mockups}"
+build_dir="$(mktemp -d "${TMPDIR:-/tmp}/sago-drop-menu-mockups.XXXXXX")"
+trap 'rm -rf "$build_dir"' EXIT
+
+mkdir -p "$output_dir"
+
+swiftc \
+  -parse-as-library \
+  "$root/tools/MenuMockup.swift" \
+  -o "$build_dir/sago-drop-menu-mockup"
+
+"$build_dir/sago-drop-menu-mockup" before "$output_dir/before.png"
+"$build_dir/sago-drop-menu-mockup" after "$output_dir/after.png"
