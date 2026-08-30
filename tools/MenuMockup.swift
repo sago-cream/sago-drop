@@ -108,7 +108,7 @@ private struct MenuMockupView: View {
                 MenuRow("Save Clipboard", shortcut: "⌥⌘V")
                 MenuSeparator()
                 MenuRow("Discord Upload Limit", shortcut: "›")
-                MenuRow("Sign In…")
+                MenuRow("Connect to GitHub…")
                 MenuRow("✓  Open at Login")
                 if state.showsAutoUpdate {
                     MenuRow("Update Available")

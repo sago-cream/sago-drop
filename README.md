@@ -55,7 +55,7 @@ Requirements:
    of the Dock. Its first window explains how to share a file and what Sago Drop
    puts on your clipboard.
 2. To let files become public links when they cannot fit in Discord, choose
-   **Sign In…** from the S menu.
+   **Connect to GitHub…** from the S menu.
 3. Approve the displayed request in your browser.
 
 Link uploads work once access is approved. Direct Discord attachments do not
@@ -106,8 +106,8 @@ uploads remain available under **Recent Uploads**.
 
 ## Troubleshooting
 
-- **Sharing asks you to sign in:** The file could not fit the selected Discord
-  limit without dropping below 720p. Sign in to upload it as a link.
+- **Sharing asks you to connect to GitHub:** The file could not fit the selected
+  Discord limit without dropping below 720p. Connect to upload it as a link.
 - **A file is rejected:** Check its format and the limits above. MOV and MP4
   files are prepared locally; images must fit the upload limit already.
 - **Homebrew installed an older version:** Run `brew update`, then

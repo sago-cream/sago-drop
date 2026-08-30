@@ -20,7 +20,7 @@ struct OnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            routeSection
+            message
             footer
         }
         .frame(width: 440)
@@ -38,13 +38,12 @@ struct OnboardingView: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("Welcome to Sago Drop")
+                Text("Sago Drop")
                     .font(.system(size: 21, weight: .bold, design: .rounded))
 
-                Text("Sago Drop lives in your Mac's menu bar, not the Dock. Drag a file onto its S icon, or copy a file in Finder and choose Share Copied Files from the S menu.")
-                    .font(.system(size: 12))
+                Text("Send your files anywhere.")
+                    .font(.system(size: 13))
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -53,40 +52,29 @@ struct OnboardingView: View {
         .padding(.bottom, 16)
     }
 
-    private var routeSection: some View {
-        VStack(spacing: 0) {
-            OnboardingRow(
-                symbol: "paperclip",
-                title: "If it fits in Discord",
-                detail: "Sago Drop copies the file itself. It can compress large videos on this Mac, but never below 720p."
-            )
-            Divider().padding(.leading, 54)
-            OnboardingRow(
-                symbol: "link",
-                title: "If it is still too large",
-                detail: "Sago Drop asks before uploading it to Sago Media, then copies a public link. Anyone with the link can open the file."
-            )
+    private var message: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Drag a file onto the menu bar icon, or copy or select one from the S menu.")
+
+            Text("Sago Drop keeps the original when it fits. If a video is too large, it compresses it on your Mac with little quality loss. If it still won't fit, Sago Drop can turn it into a public link after you connect to GitHub.")
+
+            Text("Either way, the result is copied to your clipboard. Boom! Paste it into Discord and send.")
         }
-        .background(
-            Color(nsColor: .controlBackgroundColor),
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-        }
+        .font(.system(size: 12))
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 24)
         .padding(.bottom, 16)
     }
 
     private var footer: some View {
         HStack(spacing: 16) {
-            Text("Your Discord limit, Sago Media sign-in, and Open at Login stay in the S menu. After sharing, paste into Discord with ⌘V.")
+            Text("Have something else stuck in your clipboard? Choose Save Clipboard or press ⌥⌘V to save it as a file.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
-            Button("Get Started") {
+            Button("Got It") {
                 onDone()
             }
             .buttonStyle(.borderedProminent)
@@ -94,32 +82,6 @@ struct OnboardingView: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 20)
-    }
-}
-
-private struct OnboardingRow: View {
-    let symbol: String
-    let title: String
-    let detail: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: symbol)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 24, height: 24)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                Text(detail)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
     }
 }
 
@@ -133,7 +95,7 @@ final class OnboardingWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "Welcome to Sago Drop"
+        window.title = "Sago Drop"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false

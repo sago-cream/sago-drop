@@ -284,9 +284,9 @@ final class MenuBarController: NSObject, ObservableObject {
         menu.addItem(discordLimitItem)
 
         if model.isSignedIn {
-            menu.addItem(actionItem("Sign Out", action: #selector(signOut), enabled: !model.isUploading))
+            menu.addItem(actionItem("Disconnect GitHub", action: #selector(signOut), enabled: !model.isUploading))
         } else {
-            menu.addItem(actionItem("Sign In…", action: #selector(signIn), enabled: !model.isUploading))
+            menu.addItem(actionItem("Connect to GitHub…", action: #selector(signIn), enabled: !model.isUploading))
         }
 
         let openAtLoginItem = actionItem("Open at Login", action: #selector(toggleOpenAtLogin))
