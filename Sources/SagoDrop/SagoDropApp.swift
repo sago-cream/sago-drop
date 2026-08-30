@@ -36,7 +36,7 @@ final class SagoDropAppDelegate: NSObject, NSApplicationDelegate {
                     NSApplication.shared.terminate(nil)
                 }
             }
-            Task { @MainActor in model.uploadAsLinks([URL(fileURLWithPath: testFile)]) }
+            Task { @MainActor in model.upload([URL(fileURLWithPath: testFile)]) }
         }
 #endif
     }
@@ -88,24 +88,14 @@ final class UploadModel {
     }
 
     func chooseFiles() {
-        chooseFiles(forceLink: false)
-    }
-
-    func chooseFilesAsLinks() {
-        chooseFiles(forceLink: true)
-    }
-
-    private func chooseFiles(forceLink: Bool) {
         guard !isUploading else { return }
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.allowedContentTypes = supportedExtensions.compactMap { UTType(filenameExtension: $0) }
-        panel.message = forceLink ? "Choose images or videos to upload as links" : "Choose images or videos to share"
-        panel.prompt = forceLink ? "Upload" : "Share"
-        if panel.runModal() == .OK {
-            forceLink ? uploadAsLinks(panel.urls) : upload(panel.urls)
-        }
+        panel.message = "Choose images or videos to share"
+        panel.prompt = "Share"
+        if panel.runModal() == .OK { upload(panel.urls) }
     }
 
     func uploadCopiedFiles() {
@@ -137,14 +127,6 @@ final class UploadModel {
     }
 
     func upload(_ urls: [URL]) {
-        share(urls, forceLink: false)
-    }
-
-    func uploadAsLinks(_ urls: [URL]) {
-        share(urls, forceLink: true)
-    }
-
-    private func share(_ urls: [URL], forceLink: Bool) {
         let urls = urls.filter { $0.isFileURL && supportedExtensions.contains($0.pathExtension.lowercased()) }
         guard !isUploading else { return }
         guard !urls.isEmpty else {
@@ -153,11 +135,15 @@ final class UploadModel {
             return
         }
         isUploading = true
-        message = forceLink || urls.count > 1
+        var bypassDiscordRouting = false
+#if DEBUG
+        bypassDiscordRouting = ProcessInfo.processInfo.environment["SAGO_MEDIA_SMOKE_FILE"] != nil
+#endif
+        message = bypassDiscordRouting || urls.count > 1
             ? (urls.count == 1 ? "Uploading \(urls[0].lastPathComponent)…" : "Uploading \(urls.count) files…")
             : "Checking \(urls[0].lastPathComponent)…"
         Task {
-            if !forceLink, urls.count == 1 {
+            if !bypassDiscordRouting, urls.count == 1 {
                 let sourceURL = urls[0]
                 MediaPreparation.cleanUpDiscordCache()
                 if MediaPreparation.isVideo(sourceURL) {

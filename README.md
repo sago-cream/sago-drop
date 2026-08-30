@@ -60,11 +60,10 @@ log in to your Mac.
 ## Share
 
 - Drag supported files directly onto the menu-bar icon.
-- Copy a file in Finder and choose **Share Copied Files** (`⇧⌘V`).
-- Copy other content and choose **Save Clipboard** (`⌘V`) to save it as a
+- Copy a file in Finder and choose **Share Copied Files** (`⌘V`).
+- Copy other content and choose **Save Clipboard** (`⌥⌘V`) to save it as a
   file in Downloads.
 - Choose **Share Files…** (`⌘O`) to use the standard file picker.
-- Choose **Upload as Link…** to skip the Discord size check.
 
 Set **Discord Upload Limit** to Free, Nitro Basic, or Nitro. A single file that
 already fits is copied unchanged. Oversized video is compressed only when it

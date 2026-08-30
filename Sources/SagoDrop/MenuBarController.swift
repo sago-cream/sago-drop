@@ -220,14 +220,14 @@ final class MenuBarController: NSObject, ObservableObject {
             "Share Copied Files",
             action: #selector(uploadCopiedFiles),
             keyEquivalent: "v",
-            modifiers: [.command, .shift],
             enabled: !model.isUploading
         ))
-        menu.addItem(actionItem("Upload as Link…", action: #selector(chooseFilesAsLinks), enabled: !model.isUploading))
+        menu.addItem(.separator())
         menu.addItem(actionItem(
             "Save Clipboard",
             action: #selector(downloadClipboard),
             keyEquivalent: "v",
+            modifiers: [.command, .option],
             enabled: !model.isUploading
         ))
 
@@ -334,10 +334,6 @@ final class MenuBarController: NSObject, ObservableObject {
 
     @objc private func chooseFiles() {
         model.chooseFiles()
-    }
-
-    @objc private func chooseFilesAsLinks() {
-        model.chooseFilesAsLinks()
     }
 
     @objc private func selectDiscordUploadLimit(_ sender: NSMenuItem) {

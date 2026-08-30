@@ -56,7 +56,7 @@ private struct MenuMockupView: View {
             if state.usesSmartSharing {
                 discordLimitMenu
                     .padding(.leading, 245 + menuWidth + 2)
-                    .padding(.top, menuBarHeight + 110)
+                    .padding(.top, menuBarHeight + 94)
             }
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
@@ -78,11 +78,14 @@ private struct MenuMockupView: View {
     private var menu: some View {
         VStack(spacing: 0) {
             MenuRow(state.usesSmartSharing ? "Share Files…" : "Upload Files…", shortcut: "⌘O")
-            MenuRow(state.usesSmartSharing ? "Share Copied Files" : "Upload Copied Files", shortcut: "⇧⌘V")
             if state.usesSmartSharing {
-                MenuRow("Upload as Link…")
+                MenuRow("Share Copied Files", shortcut: "⌘V")
+                MenuSeparator()
+                MenuRow("Save Clipboard", shortcut: "⌥⌘V")
+            } else {
+                MenuRow("Upload Copied Files", shortcut: "⇧⌘V")
+                MenuRow("Save Clipboard", shortcut: "⌘V")
             }
-            MenuRow("Save Clipboard", shortcut: "⌘V")
             MenuSeparator()
             if state.usesSmartSharing {
                 MenuRow("Discord Upload Limit", shortcut: "›")
