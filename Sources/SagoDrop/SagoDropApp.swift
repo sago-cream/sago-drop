@@ -24,6 +24,7 @@ final class SagoDropAppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApplication.shared.applicationIconImage = AppResources.appIcon
         MediaPreparation.cleanUpDiscordCache()
         let model = UploadModel()
         menuBarController = MenuBarController(model: model)
