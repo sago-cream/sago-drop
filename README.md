@@ -63,6 +63,9 @@ in is normally a one-time step.
 Choose **Open at Login** from the menu if you want Sago Drop to start when you
 log in to your Mac.
 
+Sago Drop checks GitHub Releases once a day for signed updates. Choose **Check
+for Updates…** from the menu to check immediately.
+
 ## Share
 
 - Drag supported files directly onto the menu-bar icon.

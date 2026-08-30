@@ -15,7 +15,7 @@ struct MenuMockup {
         let arguments = Array(CommandLine.arguments.dropFirst())
         guard arguments.count == 2,
               let state = MockupState(rawValue: arguments[0]) else {
-            fputs("Usage: MenuMockup <before|after> <output.png>\n", stderr)
+            fputs("Usage: MenuMockup <before|after|update-before|update-after> <output.png>\n", stderr)
             exit(2)
         }
 
@@ -32,8 +32,11 @@ struct MenuMockup {
 private enum MockupState: String {
     case before
     case after
+    case updateBefore = "update-before"
+    case updateAfter = "update-after"
 
-    var usesSmartSharing: Bool { self == .after }
+    var usesSmartSharing: Bool { self != .before }
+    var showsAutoUpdate: Bool { self == .updateAfter }
 }
 
 private struct MenuMockupView: View {
@@ -98,6 +101,9 @@ private struct MenuMockupView: View {
             MenuRow("Sign In")
             MenuSeparator()
             MenuRow("Open at Login")
+            if state.showsAutoUpdate {
+                MenuRow("Update Available")
+            }
             MenuRow("Quit")
         }
         .padding(.vertical, 5)

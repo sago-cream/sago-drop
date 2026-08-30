@@ -15,3 +15,5 @@ swiftc \
 
 "$build_dir/sago-drop-menu-mockup" before "$output_dir/before.png"
 "$build_dir/sago-drop-menu-mockup" after "$output_dir/after.png"
+"$build_dir/sago-drop-menu-mockup" update-before "$output_dir/update-before.png"
+"$build_dir/sago-drop-menu-mockup" update-after "$output_dir/update-after.png"
