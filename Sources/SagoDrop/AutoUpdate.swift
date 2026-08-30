@@ -399,11 +399,8 @@ final class AutoUpdateStore {
     private static let lastCheckKey = "lastAutoUpdateCheck"
     private static let checkInterval: TimeInterval = 24 * 60 * 60
 
-    private(set) var status = AutoUpdateStatus.idle {
-        didSet { onStatusChange?(status) }
-    }
+    private(set) var status = AutoUpdateStatus.idle
     var onError: ((String) -> Void)?
-    var onStatusChange: ((AutoUpdateStatus) -> Void)?
 
     private let client: GitHubReleaseUpdateClient
     private let defaults: UserDefaults

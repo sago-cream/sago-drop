@@ -13,7 +13,7 @@ struct MenuMockup {
         let arguments = Array(CommandLine.arguments.dropFirst())
         guard arguments.count == 2,
               let state = MockupState(rawValue: arguments[0]) else {
-            fputs("Usage: MenuMockup <before|after|update-before|update-after|how-it-works|settings-before|settings-after|settings> <output.png>\n", stderr)
+            fputs("Usage: MenuMockup <before|after|update-before|update-after|settings-before|settings-after|settings> <output.png>\n", stderr)
             exit(2)
         }
 
@@ -32,21 +32,20 @@ private enum MockupState: String {
     case after
     case updateBefore = "update-before"
     case updateAfter = "update-after"
-    case howItWorks = "how-it-works"
     case settingsBefore = "settings-before"
     case settingsAfter = "settings-after"
     case settings
 
     var usesSmartSharing: Bool {
-        self != .before && self != .howItWorks && self != .settings
+        self != .before && self != .settings
     }
     var showsAutoUpdate: Bool {
         self == .updateAfter || self == .settingsBefore || self == .settingsAfter
     }
     var usesCompactMenu: Bool { self == .settingsAfter }
     var canvasSize: CGSize {
-        self == .howItWorks || self == .settings
-            ? CGSize(width: 760, height: 500)
+        self == .settings
+            ? CGSize(width: 760, height: 590)
             : CGSize(width: 760, height: 450)
     }
 }
@@ -58,14 +57,7 @@ private struct MenuMockupView: View {
         ZStack(alignment: .topLeading) {
             DesktopBackground()
 
-            if state == .howItWorks {
-                HowItWorksView(
-                    appIcon: NSImage(contentsOfFile: "assets/sago-drop-logo.svg"),
-                    onDone: {}
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .position(x: state.canvasSize.width / 2, y: state.canvasSize.height / 2)
-            } else if state == .settings {
+            if state == .settings {
                 SettingsView(state: SettingsState(
                     appIcon: NSImage(contentsOfFile: "assets/sago-drop-logo.svg"),
                     limitOptions: [
@@ -75,9 +67,8 @@ private struct MenuMockupView: View {
                     ],
                     selectedLimit: 20_000_000,
                     openAtLogin: true,
-                    isSignedIn: false,
-                    update: .init(title: "Check for Updates…", canActivate: true)
-                ))
+                    isSignedIn: false
+                ), onDone: {})
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .position(x: state.canvasSize.width / 2, y: state.canvasSize.height / 2)
             } else {

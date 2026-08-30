@@ -51,10 +51,11 @@ Requirements:
 
 ## First Run
 
-1. Open Sago Drop from Applications. It appears in the menu bar instead of the
-   Dock. A short guide explains when Sago Drop copies an attachment and when it
-   uploads a public link.
-2. To enable link fallback, open **Settings…** and choose **Sign In…**.
+1. Open Sago Drop from Applications. It appears as an S in the menu bar instead
+   of the Dock. Its first window explains how to share a file and lets you choose
+   your Discord plan.
+2. To let files become public links when they cannot fit in Discord, choose
+   **Sign In…** in that window.
 3. Approve the displayed request in your browser.
 
 Link uploads work once access is approved. Direct Discord attachments do not
@@ -64,10 +65,11 @@ in is normally a one-time step.
 Enable **Open at Login** in Settings if you want Sago Drop to start when you log
 in to your Mac.
 
-Open **How Sago Drop Works…** from Settings to see the guide again.
+Open **Settings…** from the S menu to see the explanation or change these
+options again.
 
-Sago Drop checks GitHub Releases once a day for signed updates. Open Settings
-and choose **Check for Updates…** to check immediately.
+Sago Drop checks GitHub Releases once a day for signed updates. When an update
+is ready, **Update Available** appears in the S menu.
 
 ## Share
 

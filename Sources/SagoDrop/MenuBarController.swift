@@ -51,12 +51,7 @@ final class MenuBarController: NSObject, ObservableObject {
 
     private let model: UploadModel
     private let autoUpdateStore = AutoUpdateStore()
-    private lazy var howItWorksWindowController = HowItWorksWindowController()
-    private lazy var settingsWindowController = SettingsWindowController(
-        model: model,
-        autoUpdateStore: autoUpdateStore,
-        howItWorksWindowController: howItWorksWindowController
-    )
+    private lazy var settingsWindowController = SettingsWindowController(model: model)
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let menu = NSMenu()
     private var activityState = MenuBarState.idle
@@ -96,11 +91,11 @@ final class MenuBarController: NSObject, ObservableObject {
 #else
         let isSmokeTest = false
 #endif
-        if !isSmokeTest, HowItWorksPresentation.shouldShow() {
+        if !isSmokeTest, SettingsPresentation.shouldShow() {
             Task { @MainActor [weak self] in
                 await Task.yield()
-                self?.howItWorksWindowController.show()
-                HowItWorksPresentation.markShown()
+                self?.settingsWindowController.show()
+                SettingsPresentation.markShown()
             }
         }
     }

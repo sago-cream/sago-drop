@@ -1,14 +1,21 @@
 import AppKit
 import SwiftUI
 
+enum SettingsPresentation {
+    private static let seenKey = "hasSeenHowItWorksV1"
+
+    static func shouldShow(in defaults: UserDefaults = .standard) -> Bool {
+        !defaults.bool(forKey: seenKey)
+    }
+
+    static func markShown(in defaults: UserDefaults = .standard) {
+        defaults.set(true, forKey: seenKey)
+    }
+}
+
 struct SettingsLimitOption: Identifiable {
     let id: Int64
     let title: String
-}
-
-struct SettingsUpdatePresentation: Equatable {
-    let title: String
-    let canActivate: Bool
 }
 
 @MainActor
@@ -20,28 +27,23 @@ final class SettingsState: ObservableObject {
     @Published var openAtLogin: Bool
     @Published var isSignedIn: Bool
     @Published var isAccountBusy = false
-    @Published var update: SettingsUpdatePresentation
 
     var onSelectLimit: (Int64) -> Void = { _ in }
     var onSetOpenAtLogin: (Bool) -> Bool = { $0 }
     var onSetSignedIn: (Bool) -> Void = { _ in }
-    var onActivateUpdate: () async -> Void = {}
-    var onShowHowItWorks: () -> Void = {}
 
     init(
         appIcon: NSImage?,
         limitOptions: [SettingsLimitOption],
         selectedLimit: Int64,
         openAtLogin: Bool,
-        isSignedIn: Bool,
-        update: SettingsUpdatePresentation
+        isSignedIn: Bool
     ) {
         self.appIcon = appIcon
         self.limitOptions = limitOptions
         self.selectedLimit = selectedLimit
         self.openAtLogin = openAtLogin
         self.isSignedIn = isSignedIn
-        self.update = update
     }
 
     func selectLimit(_ value: Int64) {
@@ -57,54 +59,72 @@ final class SettingsState: ObservableObject {
         isAccountBusy = true
         onSetSignedIn(!isSignedIn)
     }
-
-    func activateUpdate() {
-        guard update.canActivate else { return }
-        Task { await onActivateUpdate() }
-    }
 }
 
 struct SettingsView: View {
     @ObservedObject var state: SettingsState
+    let onDone: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            settings
+            routeSection
+            settingsSection
             footer
         }
-        .frame(width: 440)
+        .frame(width: 460)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var header: some View {
-        HStack(spacing: 14) {
+        HStack(alignment: .top, spacing: 16) {
             if let appIcon = state.appIcon {
                 Image(nsImage: appIcon)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 48, height: 48)
+                    .frame(width: 54, height: 54)
                     .accessibilityHidden(true)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Settings")
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Sago Drop is ready")
                     .font(.system(size: 21, weight: .bold, design: .rounded))
-                Text("Choose how Sago Drop handles files and starts on your Mac.")
+
+                Text("Sago Drop lives in your Mac’s menu bar, not the Dock. Drag a file onto its S icon, or copy a file in Finder and choose Share Copied Files from the S menu.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 26)
-        .padding(.horizontal, 26)
-        .padding(.bottom, 20)
+        .padding(.top, 24)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 16)
     }
 
-    private var settings: some View {
+    private var routeSection: some View {
         VStack(spacing: 0) {
-            SettingsRow(title: "Discord upload limit", detail: "Used for direct attachments.") {
-                Picker("Discord upload limit", selection: Binding(
+            RouteRow(
+                symbol: "paperclip",
+                title: "If it fits in Discord",
+                detail: "Sago Drop copies the file itself. Large videos are compressed on this Mac only when they can stay at 720p or better."
+            )
+            Divider().padding(.leading, 54)
+            RouteRow(
+                symbol: "link",
+                title: "If it is still too large",
+                detail: "Sago Drop asks before uploading it to Sago Media, then copies a public link. Anyone with that link can open the file."
+            )
+        }
+        .panelStyle()
+        .padding(.horizontal, 24)
+        .padding(.bottom, 14)
+    }
+
+    private var settingsSection: some View {
+        VStack(spacing: 0) {
+            SettingsRow(title: "Your Discord plan", detail: "Sets the largest file Discord accepts for you.") {
+                Picker("Your Discord plan", selection: Binding(
                     get: { state.selectedLimit },
                     set: { state.selectLimit($0) }
                 )) {
@@ -118,7 +138,7 @@ struct SettingsView: View {
 
             Divider().padding(.leading, 16)
 
-            SettingsRow(title: "Sago Media", detail: "Required only for public links.") {
+            SettingsRow(title: "Sago Media", detail: "Sign in only if you want files to become links.") {
                 Button(state.isSignedIn ? "Sign Out" : "Sign In…") {
                     state.toggleSignIn()
                 }
@@ -127,47 +147,60 @@ struct SettingsView: View {
 
             Divider().padding(.leading, 16)
 
-            SettingsRow(title: "Open at Login", detail: "Keep Sago Drop ready in the menu bar.") {
+            SettingsRow(title: "Open at Login", detail: "Keeps the S icon ready after restarting your Mac.") {
                 Toggle("Open at Login", isOn: Binding(
                     get: { state.openAtLogin },
                     set: { state.setOpenAtLogin($0) }
                 ))
                 .labelsHidden()
             }
-
-            Divider().padding(.leading, 16)
-
-            SettingsRow(title: "Updates", detail: "Checked automatically once a day.") {
-                Button(state.update.title) {
-                    state.activateUpdate()
-                }
-                .disabled(!state.update.canActivate)
-            }
         }
-        .background(
-            Color(nsColor: .controlBackgroundColor),
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-        }
-        .padding(.horizontal, 26)
-        .padding(.bottom, 18)
+        .panelStyle()
+        .padding(.horizontal, 24)
+        .padding(.bottom, 16)
     }
 
     private var footer: some View {
-        HStack {
-            Button("How Sago Drop Works…") {
-                state.onShowHowItWorks()
-            }
-            Spacer()
-            Text("Changes save automatically.")
+        HStack(spacing: 16) {
+            Text("When Sago Drop finishes, paste the copied file or link into Discord with ⌘V.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button("Done") {
+                onDone()
+            }
+            .buttonStyle(.borderedProminent)
+            .keyboardShortcut(.defaultAction)
         }
-        .padding(.horizontal, 26)
-        .padding(.bottom, 22)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 20)
+    }
+}
+
+private struct RouteRow: View {
+    let symbol: String
+    let title: String
+    let detail: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 24, height: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                Text(detail)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
     }
 }
 
@@ -193,34 +226,35 @@ private struct SettingsRow<Control: View>: View {
     }
 }
 
+private extension View {
+    func panelStyle() -> some View {
+        background(
+            Color(nsColor: .controlBackgroundColor),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+    }
+}
+
 #if !SAGO_DROP_MOCKUP
 import ServiceManagement
 
 @MainActor
 final class SettingsWindowController: NSWindowController {
     private let model: UploadModel
-    private let autoUpdateStore: AutoUpdateStore
-    private let howItWorksWindowController: HowItWorksWindowController
     private let state: SettingsState
 
-    init(
-        model: UploadModel,
-        autoUpdateStore: AutoUpdateStore,
-        howItWorksWindowController: HowItWorksWindowController
-    ) {
+    init(model: UploadModel) {
         self.model = model
-        self.autoUpdateStore = autoUpdateStore
-        self.howItWorksWindowController = howItWorksWindowController
         state = SettingsState(
             appIcon: AppResources.appIcon,
             limitOptions: DiscordUploadLimit.allCases.map { .init(id: $0.rawValue, title: $0.title) },
             selectedLimit: model.discordUploadLimit.rawValue,
             openAtLogin: SMAppService.mainApp.status == .enabled,
-            isSignedIn: model.isSignedIn,
-            update: .init(
-                title: autoUpdateStore.status.menuTitle,
-                canActivate: autoUpdateStore.status.canActivate
-            )
+            isSignedIn: model.isSignedIn
         )
 
         let window = NSWindow(
@@ -229,7 +263,7 @@ final class SettingsWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "Sago Drop Settings"
+        window.title = "Sago Drop"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
@@ -251,19 +285,9 @@ final class SettingsWindowController: NSWindowController {
             }
             if shouldSignIn { model.login() } else { model.logout() }
         }
-        state.onActivateUpdate = { [weak autoUpdateStore] in
-            await autoUpdateStore?.activatePrimaryAction()
-        }
-        state.onShowHowItWorks = { [weak self] in
-            self?.close()
-            self?.howItWorksWindowController.show()
-        }
         model.onAuthenticationChange = { [weak state] isSignedIn in
             state?.isSignedIn = isSignedIn
             state?.isAccountBusy = false
-        }
-        autoUpdateStore.onStatusChange = { [weak state] status in
-            state?.update = .init(title: status.menuTitle, canActivate: status.canActivate)
         }
     }
 
@@ -276,12 +300,11 @@ final class SettingsWindowController: NSWindowController {
         state.openAtLogin = SMAppService.mainApp.status == .enabled
         state.isSignedIn = model.isSignedIn
         state.isAccountBusy = model.isUploading
-        state.update = .init(
-            title: autoUpdateStore.status.menuTitle,
-            canActivate: autoUpdateStore.status.canActivate
-        )
 
-        let hostingView = NSHostingView(rootView: SettingsView(state: state))
+        let hostingView = NSHostingView(rootView: SettingsView(
+            state: state,
+            onDone: { [weak self] in self?.close() }
+        ))
         hostingView.layoutSubtreeIfNeeded()
         window.contentView = hostingView
         window.setContentSize(hostingView.fittingSize)
