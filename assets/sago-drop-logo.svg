@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">Sago Drop logo</title>
+  <desc id="description">A rounded two-way S arrow above a U-shaped download tray.</desc>
+
+  <!-- Sago palette from the Links project. -->
+  <g id="background">
+    <rect x="24" y="24" width="464" height="464" rx="112" fill="#8ED8F4"/>
+  </g>
+
+  <g id="s-arrow" fill="none" stroke="#15191D" stroke-linecap="round" stroke-linejoin="round">
+    <path id="s-flow" d="M350 92C309 120 277 154 245 193L202 245C179 273 175 297 192 311C209 325 233 322 262 318L302 313C332 309 348 323 338 345C326 371 286 397 231 420" stroke-width="34"/>
+    <g id="arrowheads" stroke-width="22">
+      <path id="upper-right-wing" d="M350 92C335 101 319 106 302 104M350 92C347 111 347 128 351 144"/>
+      <path id="lower-left-wing" d="M231 420C230 399 233 378 239 356M231 420C249 414 268 411 289 410"/>
+    </g>
+  </g>
+
+  <g id="download-tray" fill="none" stroke="#15191D" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M108 352C108 375 103 405 111 423C122 447 151 452 188 452H337C371 452 399 448 410 431C419 417 411 385 406 352"/>
+  </g>
+</svg>
