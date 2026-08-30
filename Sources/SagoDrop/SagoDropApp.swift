@@ -65,6 +65,18 @@ struct StatusNotice: Equatable {
     }
 }
 
+enum PublicUploadDisclosure {
+    private static let acceptedKey = "acceptedPublicUploadDisclosure"
+
+    static func isAccepted(in defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: acceptedKey)
+    }
+
+    static func accept(in defaults: UserDefaults = .standard) {
+        defaults.set(true, forKey: acceptedKey)
+    }
+}
+
 enum UploadProgressUpdate {
     case transferring(Double)
     case processing
@@ -79,6 +91,7 @@ final class UploadModel {
     var recent: [UploadResult] = []
     var onMenuBarStateChange: ((MenuBarState) -> Void)?
     var onStatus: ((StatusNotice) -> Void)?
+    var onPublicUploadDisclosure: ((Int) -> Bool)?
     var isSignedIn: Bool { (try? Keychain.load()) != nil }
     var discordUploadLimit: DiscordUploadLimit {
         get {
@@ -157,6 +170,11 @@ final class UploadModel {
             ? (urls.count == 1 ? "Uploading \(urls[0].lastPathComponent)…" : "Uploading \(urls.count) files…")
             : "Checking \(urls[0].lastPathComponent)…"
         Task {
+            if !bypassDiscordRouting, urls.count > 1,
+               !confirmPublicUpload(fileCount: urls.count) {
+                cancelUpload()
+                return
+            }
             if !bypassDiscordRouting, urls.count == 1 {
                 let sourceURL = urls[0]
                 MediaPreparation.cleanUpDiscordCache()
@@ -190,6 +208,10 @@ final class UploadModel {
 #endif
                         return
                     }
+                }
+                guard confirmPublicUpload(fileCount: 1) else {
+                    cancelUpload()
+                    return
                 }
                 message = "Uploading \(sourceURL.lastPathComponent) as a link…"
             }
@@ -309,6 +331,19 @@ final class UploadModel {
         guard NSPasteboard.general.writeObjects([url as NSURL]) else {
             throw MediaError.message("Couldn’t copy the prepared file")
         }
+    }
+
+    private func confirmPublicUpload(fileCount: Int) -> Bool {
+        guard isSignedIn, !PublicUploadDisclosure.isAccepted() else { return true }
+        guard onPublicUploadDisclosure?(fileCount) == true else { return false }
+        PublicUploadDisclosure.accept()
+        return true
+    }
+
+    private func cancelUpload() {
+        isUploading = false
+        message = "Sharing cancelled"
+        onMenuBarStateChange?(.idle)
     }
 }
 

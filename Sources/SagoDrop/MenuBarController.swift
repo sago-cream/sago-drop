@@ -77,6 +77,9 @@ final class MenuBarController: NSObject, ObservableObject {
         model.onStatus = { [weak self] notice in
             self?.presentStatus(notice)
         }
+        model.onPublicUploadDisclosure = { [weak self] fileCount in
+            self?.presentPublicUploadDisclosure(fileCount: fileCount) ?? false
+        }
     }
 
     private func configureStatusItem() {
@@ -332,6 +335,21 @@ final class MenuBarController: NSObject, ObservableObject {
             statusAlert = nil
             statusAlertCanBeSuppressed = false
         }
+    }
+
+    private func presentPublicUploadDisclosure(fileCount: Int) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Upload as a Public Link?"
+        alert.informativeText = fileCount == 1
+            ? "This file cannot fit your selected Discord limit at 720p or better. Sago Drop will upload it to Sago Media and copy a public link. Anyone with the link can view or download the file."
+            : "Sago Drop will upload these files to Sago Media and copy public links. Anyone with a link can view or download its file."
+        alert.alertStyle = .informational
+        alert.icon = AppResources.appIcon
+        alert.addButton(withTitle: "Upload Public Link")
+        alert.addButton(withTitle: "Cancel")
+
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     @objc private func uploadCopiedFiles() {
