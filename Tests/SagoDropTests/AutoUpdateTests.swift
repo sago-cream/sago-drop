@@ -29,7 +29,7 @@ import Testing
     )
 
     #expect(AutoUpdateStatus.idle.menuTitle == "Check for Updates…")
-    #expect(AutoUpdateStatus.updateAvailable(candidate).menuTitle == "Install Sago Drop 0.9.0…")
+    #expect(AutoUpdateStatus.updateAvailable(candidate).menuTitle == "Update Available")
     #expect(!AutoUpdateStatus.downloading(candidate).canActivate)
 }
 

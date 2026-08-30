@@ -102,7 +102,7 @@ private struct MenuMockupView: View {
             MenuSeparator()
             MenuRow("Open at Login")
             if state.showsAutoUpdate {
-                MenuRow("Check for Updates…")
+                MenuRow("Update Available")
             }
             MenuRow("Quit")
         }

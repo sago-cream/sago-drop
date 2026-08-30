@@ -79,7 +79,7 @@ enum AutoUpdateStatus: Equatable, Sendable {
         case .idle: "Check for Updates…"
         case .checking: "Checking for Updates…"
         case .upToDate: "Sago Drop Is Up to Date"
-        case .updateAvailable(let candidate): "Install Sago Drop \(candidate.version)…"
+        case .updateAvailable: "Update Available"
         case .downloading: "Downloading Update…"
         case .installing: "Installing Update…"
         }
