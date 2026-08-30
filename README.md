@@ -52,6 +52,9 @@ Requirements:
 Uploads work once access is approved. The credential is saved in Keychain, so
 signing in is normally a one-time step.
 
+Choose **Open at Login** from the menu if you want Sago Drop to start when you
+log in to your Mac.
+
 ## Upload
 
 - Drag supported files directly onto the menu-bar icon.

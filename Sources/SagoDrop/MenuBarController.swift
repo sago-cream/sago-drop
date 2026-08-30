@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 enum MenuBarState: Equatable {
@@ -250,6 +251,9 @@ final class MenuBarController: NSObject, ObservableObject {
             menu.addItem(actionItem("Sign In", action: #selector(signIn), enabled: !model.isUploading))
         }
         menu.addItem(.separator())
+        let openAtLoginItem = actionItem("Open at Login", action: #selector(toggleOpenAtLogin))
+        openAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        menu.addItem(openAtLoginItem)
         menu.addItem(actionItem("Quit", action: #selector(quit)))
     }
 
@@ -324,6 +328,24 @@ final class MenuBarController: NSObject, ObservableObject {
 
     @objc private func signOut() {
         model.logout()
+    }
+
+    @objc private func toggleOpenAtLogin() {
+        do {
+            switch SMAppService.mainApp.status {
+            case .enabled:
+                try SMAppService.mainApp.unregister()
+            case .requiresApproval:
+                SMAppService.openSystemSettingsLoginItems()
+            case .notFound, .notRegistered:
+                try SMAppService.mainApp.register()
+            @unknown default:
+                try SMAppService.mainApp.register()
+            }
+        } catch {
+            model.report("Couldn’t update Open at Login")
+            NSSound.beep()
+        }
     }
 
     @objc private func quit() {
