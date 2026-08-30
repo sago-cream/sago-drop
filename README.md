@@ -143,8 +143,8 @@ scripts/menu-mockups
 
 `scripts/package-app <version>` builds the hardened-runtime app, signs it with
 the configured Developer ID Application certificate, notarizes it when
-`SAGO_DROP_NOTARY_PROFILE` is set, and creates the release ZIP and Homebrew
-cask in `dist/`.
+`SAGO_DROP_NOTARY_PROFILE` is set, verifies the exact archived app, and creates
+the Homebrew cask in `dist/`.
 
 Release from a clean `main` that exactly matches `origin/main`:
 

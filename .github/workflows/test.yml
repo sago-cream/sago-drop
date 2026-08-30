@@ -7,12 +7,12 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - run: swift build
-      - run: scripts/build-app
+      - uses: oven-sh/setup-bun@v2
+      - run: swift test
+      - run: scripts/smoke-upload-progress
+      - run: scripts/package-app 0.0.0
         env:
           SAGO_DROP_CODESIGN_IDENTITY: "-"
-      - run: codesign --verify --deep --strict ".build/Sago Drop.app"
-      - run: plutil -lint ".build/Sago Drop.app/Contents/Info.plist"
