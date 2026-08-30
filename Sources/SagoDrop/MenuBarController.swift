@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 enum MenuBarState: Equatable {
@@ -51,7 +52,7 @@ final class MenuBarController: NSObject, ObservableObject {
 
     private let model: UploadModel
     private let autoUpdateStore = AutoUpdateStore()
-    private lazy var settingsWindowController = SettingsWindowController(model: model)
+    private lazy var onboardingWindowController = OnboardingWindowController()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let menu = NSMenu()
     private var activityState = MenuBarState.idle
@@ -91,11 +92,11 @@ final class MenuBarController: NSObject, ObservableObject {
 #else
         let isSmokeTest = false
 #endif
-        if !isSmokeTest, SettingsPresentation.shouldShow() {
+        if !isSmokeTest, OnboardingPresentation.shouldShow() {
             Task { @MainActor [weak self] in
                 await Task.yield()
-                self?.settingsWindowController.show()
-                SettingsPresentation.markShown()
+                self?.onboardingWindowController.show()
+                OnboardingPresentation.markShown()
             }
         }
     }
@@ -267,6 +268,31 @@ final class MenuBarController: NSObject, ObservableObject {
         }
 
         menu.addItem(.separator())
+        let discordLimitItem = NSMenuItem(title: "Discord Upload Limit", action: nil, keyEquivalent: "")
+        let discordLimitMenu = NSMenu(title: "Discord Upload Limit")
+        for limit in DiscordUploadLimit.allCases {
+            let item = actionItem(
+                limit.title,
+                action: #selector(selectDiscordUploadLimit),
+                enabled: !model.isUploading
+            )
+            item.representedObject = NSNumber(value: limit.rawValue)
+            item.state = model.discordUploadLimit == limit ? .on : .off
+            discordLimitMenu.addItem(item)
+        }
+        discordLimitItem.submenu = discordLimitMenu
+        menu.addItem(discordLimitItem)
+
+        if model.isSignedIn {
+            menu.addItem(actionItem("Sign Out", action: #selector(signOut), enabled: !model.isUploading))
+        } else {
+            menu.addItem(actionItem("Sign In…", action: #selector(signIn), enabled: !model.isUploading))
+        }
+
+        let openAtLoginItem = actionItem("Open at Login", action: #selector(toggleOpenAtLogin))
+        openAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        menu.addItem(openAtLoginItem)
+
         if autoUpdateStore.status.shouldShowInMenu {
             menu.addItem(actionItem(
                 autoUpdateStore.status.menuTitle,
@@ -274,11 +300,6 @@ final class MenuBarController: NSObject, ObservableObject {
                 enabled: autoUpdateStore.status.canActivate
             ))
         }
-        menu.addItem(actionItem(
-            "Settings…",
-            action: #selector(showSettings),
-            keyEquivalent: ","
-        ))
         menu.addItem(.separator())
         menu.addItem(actionItem("Quit", action: #selector(quit)))
     }
@@ -369,18 +390,46 @@ final class MenuBarController: NSObject, ObservableObject {
         model.chooseFiles()
     }
 
+    @objc private func selectDiscordUploadLimit(_ sender: NSMenuItem) {
+        guard let rawValue = (sender.representedObject as? NSNumber)?.int64Value,
+              let limit = DiscordUploadLimit(rawValue: rawValue) else { return }
+        model.discordUploadLimit = limit
+    }
+
     @objc private func copyRecentLink(_ sender: NSMenuItem) {
         guard let url = sender.representedObject as? String else { return }
         model.copy(url)
         model.report("Copied link")
     }
 
-    @objc private func activateAutoUpdate() {
-        Task { await autoUpdateStore.activatePrimaryAction() }
+    @objc private func signIn() {
+        model.login()
     }
 
-    @objc private func showSettings() {
-        settingsWindowController.show()
+    @objc private func signOut() {
+        model.logout()
+    }
+
+    @objc private func toggleOpenAtLogin() {
+        do {
+            switch SMAppService.mainApp.status {
+            case .enabled:
+                try SMAppService.mainApp.unregister()
+            case .requiresApproval:
+                SMAppService.openSystemSettingsLoginItems()
+            case .notFound, .notRegistered:
+                try SMAppService.mainApp.register()
+            @unknown default:
+                try SMAppService.mainApp.register()
+            }
+        } catch {
+            model.reportAttention("Couldn’t update Open at Login")
+            NSSound.beep()
+        }
+    }
+
+    @objc private func activateAutoUpdate() {
+        Task { await autoUpdateStore.activatePrimaryAction() }
     }
 
     @objc private func quit() {

@@ -13,7 +13,7 @@ struct MenuMockup {
         let arguments = Array(CommandLine.arguments.dropFirst())
         guard arguments.count == 2,
               let state = MockupState(rawValue: arguments[0]) else {
-            fputs("Usage: MenuMockup <before|after|update-before|update-after|settings-before|settings-after|settings> <output.png>\n", stderr)
+            fputs("Usage: MenuMockup <before|after|update-before|update-after|onboarding|menu> <output.png>\n", stderr)
             exit(2)
         }
 
@@ -32,20 +32,18 @@ private enum MockupState: String {
     case after
     case updateBefore = "update-before"
     case updateAfter = "update-after"
-    case settingsBefore = "settings-before"
-    case settingsAfter = "settings-after"
-    case settings
+    case onboarding
+    case menu
 
     var usesSmartSharing: Bool {
-        self != .before && self != .settings
+        self != .before && self != .onboarding
     }
     var showsAutoUpdate: Bool {
-        self == .updateAfter || self == .settingsBefore || self == .settingsAfter
+        self == .updateAfter || self == .menu
     }
-    var usesCompactMenu: Bool { self == .settingsAfter }
     var canvasSize: CGSize {
-        self == .settings
-            ? CGSize(width: 760, height: 590)
+        self == .onboarding
+            ? CGSize(width: 760, height: 500)
             : CGSize(width: 760, height: 450)
     }
 }
@@ -57,18 +55,11 @@ private struct MenuMockupView: View {
         ZStack(alignment: .topLeading) {
             DesktopBackground()
 
-            if state == .settings {
-                SettingsView(state: SettingsState(
+            if state == .onboarding {
+                OnboardingView(
                     appIcon: NSImage(contentsOfFile: "assets/sago-drop-logo.svg"),
-                    limitOptions: [
-                        .init(id: 20_000_000, title: "Free, 20 MB"),
-                        .init(id: 50_000_000, title: "Nitro Basic, 50 MB"),
-                        .init(id: 500_000_000, title: "Nitro, 500 MB"),
-                    ],
-                    selectedLimit: 20_000_000,
-                    openAtLogin: true,
-                    isSignedIn: false
-                ), onDone: {})
+                    onDone: {}
+                )
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .position(x: state.canvasSize.width / 2, y: state.canvasSize.height / 2)
             } else {
@@ -83,7 +74,7 @@ private struct MenuMockupView: View {
                     .padding(.leading, 245)
                     .padding(.top, menuBarHeight + 1)
 
-                if state.usesSmartSharing && !state.usesCompactMenu {
+                if state.usesSmartSharing {
                     discordLimitMenu
                         .padding(.leading, 245 + menuWidth + 2)
                         .padding(.top, menuBarHeight + 94)
@@ -111,15 +102,17 @@ private struct MenuMockupView: View {
 
     private var menu: some View {
         VStack(spacing: 0) {
-            if state.usesCompactMenu {
+            if state == .menu {
                 MenuRow("Share Copied Files", shortcut: "⌘V")
                 MenuRow("Share Files…", shortcut: "⌘O")
                 MenuRow("Save Clipboard", shortcut: "⌥⌘V")
                 MenuSeparator()
+                MenuRow("Discord Upload Limit", shortcut: "›")
+                MenuRow("Sign In…")
+                MenuRow("✓  Open at Login")
                 if state.showsAutoUpdate {
                     MenuRow("Update Available")
                 }
-                MenuRow("Settings…", shortcut: "⌘,")
                 MenuSeparator()
                 MenuRow("Quit")
             } else {

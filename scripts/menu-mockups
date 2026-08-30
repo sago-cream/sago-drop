@@ -11,7 +11,7 @@ mkdir -p "$output_dir"
 swiftc \
   -D SAGO_DROP_MOCKUP \
   -parse-as-library \
-  "$root/Sources/SagoDrop/Settings.swift" \
+  "$root/Sources/SagoDrop/Onboarding.swift" \
   "$root/tools/MenuMockup.swift" \
   -o "$build_dir/sago-drop-menu-mockup"
 
@@ -19,6 +19,5 @@ swiftc \
 "$build_dir/sago-drop-menu-mockup" after "$output_dir/after.png"
 "$build_dir/sago-drop-menu-mockup" update-before "$output_dir/update-before.png"
 "$build_dir/sago-drop-menu-mockup" update-after "$output_dir/update-after.png"
-"$build_dir/sago-drop-menu-mockup" settings-before "$output_dir/settings-before.png"
-"$build_dir/sago-drop-menu-mockup" settings-after "$output_dir/settings-after.png"
-"$build_dir/sago-drop-menu-mockup" settings "$output_dir/settings.png"
+"$build_dir/sago-drop-menu-mockup" onboarding "$output_dir/onboarding.png"
+"$build_dir/sago-drop-menu-mockup" menu "$output_dir/menu.png"
