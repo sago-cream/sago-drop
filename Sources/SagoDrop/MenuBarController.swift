@@ -61,6 +61,7 @@ final class MenuBarController: NSObject, ObservableObject {
     private var uploadPercentage: Int?
     private var isFinishingUpload = false
     private var statusAlert: NSAlert?
+    private var statusAlertCanBeSuppressed = false
 
     init(model: UploadModel) {
         self.model = model
@@ -73,8 +74,8 @@ final class MenuBarController: NSObject, ObservableObject {
         model.onUploadProgressChange = { [weak self] update in
             self?.updateUploadProgress(update)
         }
-        model.onStatus = { [weak self] status in
-            self?.presentStatus(status)
+        model.onStatus = { [weak self] notice in
+            self?.presentStatus(notice)
         }
     }
 
@@ -288,40 +289,48 @@ final class MenuBarController: NSObject, ObservableObject {
         return item
     }
 
-    private func presentStatus(_ status: String) {
+    private func presentStatus(_ notice: StatusNotice) {
 #if DEBUG
         guard ProcessInfo.processInfo.environment["SAGO_MEDIA_SMOKE_LOG"] != "1" else { return }
 #endif
-        guard !UserDefaults.standard.bool(forKey: Self.suppressStatusDialogsKey) else { return }
+        guard !notice.canBeSuppressed
+                || !UserDefaults.standard.bool(forKey: Self.suppressStatusDialogsKey) else { return }
 
         if let statusAlert {
-            statusAlert.informativeText = status
+            statusAlert.informativeText = notice.text
+            statusAlert.showsSuppressionButton = notice.canBeSuppressed
+            statusAlertCanBeSuppressed = notice.canBeSuppressed
             return
         }
 
         Task { @MainActor [weak self] in
             await Task.yield()
             guard let self,
-                  !UserDefaults.standard.bool(forKey: Self.suppressStatusDialogsKey),
+                  !notice.canBeSuppressed
+                    || !UserDefaults.standard.bool(forKey: Self.suppressStatusDialogsKey),
                   statusAlert == nil else { return }
 
             let alert = NSAlert()
             alert.messageText = "Sago Drop"
-            alert.informativeText = status
+            alert.informativeText = notice.text
             alert.alertStyle = .informational
             alert.icon = AppResources.appIcon
             alert.addButton(withTitle: "OK")
-            alert.showsSuppressionButton = true
-            alert.suppressionButton?.title = "Don't show this again"
+            alert.showsSuppressionButton = notice.canBeSuppressed
+            if notice.canBeSuppressed {
+                alert.suppressionButton?.title = "Don't show completion messages again"
+            }
             statusAlert = alert
+            statusAlertCanBeSuppressed = notice.canBeSuppressed
 
             NSApplication.shared.activate(ignoringOtherApps: true)
             alert.runModal()
 
-            if alert.suppressionButton?.state == .on {
+            if statusAlertCanBeSuppressed, alert.suppressionButton?.state == .on {
                 UserDefaults.standard.set(true, forKey: Self.suppressStatusDialogsKey)
             }
             statusAlert = nil
+            statusAlertCanBeSuppressed = false
         }
     }
 
@@ -370,7 +379,7 @@ final class MenuBarController: NSObject, ObservableObject {
                 try SMAppService.mainApp.register()
             }
         } catch {
-            model.report("Couldn’t update Open at Login")
+            model.reportAttention("Couldn’t update Open at Login")
             NSSound.beep()
         }
     }

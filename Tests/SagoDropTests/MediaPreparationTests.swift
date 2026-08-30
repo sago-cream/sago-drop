@@ -4,6 +4,11 @@ import Foundation
 import Testing
 @testable import SagoDrop
 
+@Test func onlyCompletionNoticesCanBeSuppressed() {
+    #expect(StatusNotice.completion("Copied").canBeSuppressed)
+    #expect(!StatusNotice.attention("Sign in before uploading").canBeSuppressed)
+}
+
 @Test func rejectsOversizedNonVideoBeforeUpload() async throws {
     let url = FileManager.default.temporaryDirectory
         .appending(path: "sago-drop-oversized-\(UUID().uuidString).png")
