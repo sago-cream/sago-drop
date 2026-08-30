@@ -116,6 +116,12 @@ scripts/smoke-upload-progress
 The suite uses a throttled localhost server and debug-only credentials to test
 successful and failed uploads without reading Keychain or creating public media.
 
+Generate matched menu screenshots for visual review:
+
+```bash
+scripts/menu-mockups
+```
+
 ## Maintainer Release
 
 `scripts/package-app <version>` builds the hardened-runtime app, signs it with
