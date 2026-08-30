@@ -52,7 +52,8 @@ Requirements:
 ## First Run
 
 1. Open Sago Drop from Applications. It appears in the menu bar instead of the
-   Dock.
+   Dock. A short guide explains when Sago Drop copies an attachment and when it
+   uploads a public link.
 2. To enable link fallback, choose **Sign In** from its menu.
 3. Approve the displayed request in your browser.
 
@@ -62,6 +63,8 @@ in is normally a one-time step.
 
 Choose **Open at Login** from the menu if you want Sago Drop to start when you
 log in to your Mac.
+
+Open **How Sago Drop Works…** from the menu to see the guide again.
 
 Sago Drop checks GitHub Releases once a day for signed updates. Choose **Check
 for Updates…** from the menu to check immediately.

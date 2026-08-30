@@ -52,6 +52,7 @@ final class MenuBarController: NSObject, ObservableObject {
 
     private let model: UploadModel
     private let autoUpdateStore = AutoUpdateStore()
+    private lazy var howItWorksWindowController = HowItWorksWindowController()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let menu = NSMenu()
     private var activityState = MenuBarState.idle
@@ -85,6 +86,19 @@ final class MenuBarController: NSObject, ObservableObject {
             model?.reportAttention(message)
         }
         autoUpdateStore.startAutomaticChecks()
+
+#if DEBUG
+        let isSmokeTest = ProcessInfo.processInfo.environment["SAGO_MEDIA_SMOKE_LOG"] == "1"
+#else
+        let isSmokeTest = false
+#endif
+        if !isSmokeTest, HowItWorksPresentation.shouldShow() {
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                self?.howItWorksWindowController.show()
+                HowItWorksPresentation.markShown()
+            }
+        }
     }
 
     private func configureStatusItem() {
@@ -285,6 +299,8 @@ final class MenuBarController: NSObject, ObservableObject {
             action: #selector(activateAutoUpdate),
             enabled: autoUpdateStore.status.canActivate
         ))
+        menu.addItem(actionItem("How Sago Drop Works…", action: #selector(showHowItWorks)))
+        menu.addItem(.separator())
         menu.addItem(actionItem("Quit", action: #selector(quit)))
     }
 
@@ -414,6 +430,10 @@ final class MenuBarController: NSObject, ObservableObject {
 
     @objc private func activateAutoUpdate() {
         Task { await autoUpdateStore.activatePrimaryAction() }
+    }
+
+    @objc private func showHowItWorks() {
+        howItWorksWindowController.show()
     }
 
     @objc private func quit() {
