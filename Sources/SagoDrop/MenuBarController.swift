@@ -51,6 +51,7 @@ final class MenuBarController: NSObject, ObservableObject {
     @Published private(set) var failureEffectTrigger = 0
 
     private let model: UploadModel
+    private let autoUpdateStore = AutoUpdateStore()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let menu = NSMenu()
     private var activityState = MenuBarState.idle
@@ -80,6 +81,10 @@ final class MenuBarController: NSObject, ObservableObject {
         model.onPublicUploadDisclosure = { [weak self] fileCount in
             self?.presentPublicUploadDisclosure(fileCount: fileCount) ?? false
         }
+        autoUpdateStore.onError = { [weak model] message in
+            model?.reportAttention(message)
+        }
+        autoUpdateStore.startAutomaticChecks()
     }
 
     private func configureStatusItem() {
@@ -275,6 +280,11 @@ final class MenuBarController: NSObject, ObservableObject {
         let openAtLoginItem = actionItem("Open at Login", action: #selector(toggleOpenAtLogin))
         openAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
         menu.addItem(openAtLoginItem)
+        menu.addItem(actionItem(
+            autoUpdateStore.status.menuTitle,
+            action: #selector(activateAutoUpdate),
+            enabled: autoUpdateStore.status.canActivate
+        ))
         menu.addItem(actionItem("Quit", action: #selector(quit)))
     }
 
@@ -400,6 +410,10 @@ final class MenuBarController: NSObject, ObservableObject {
             model.reportAttention("Couldn’t update Open at Login")
             NSSound.beep()
         }
+    }
+
+    @objc private func activateAutoUpdate() {
+        Task { await autoUpdateStore.activatePrimaryAction() }
     }
 
     @objc private func quit() {

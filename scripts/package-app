@@ -48,6 +48,7 @@ cask "sago-drop" do
   desc "Upload files from the menu bar"
   homepage "https://github.com/sago-cream/sago-drop"
 
+  auto_updates true
   depends_on macos: :sonoma
 
   app "Sago Drop.app"
