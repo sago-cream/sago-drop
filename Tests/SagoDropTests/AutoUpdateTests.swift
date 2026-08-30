@@ -31,6 +31,10 @@ import Testing
     #expect(AutoUpdateStatus.idle.menuTitle == "Check for Updates…")
     #expect(AutoUpdateStatus.updateAvailable(candidate).menuTitle == "Update Available")
     #expect(!AutoUpdateStatus.downloading(candidate).canActivate)
+    #expect(!AutoUpdateStatus.idle.shouldShowInMenu)
+    #expect(!AutoUpdateStatus.checking.shouldShowInMenu)
+    #expect(AutoUpdateStatus.updateAvailable(candidate).shouldShowInMenu)
+    #expect(AutoUpdateStatus.downloading(candidate).shouldShowInMenu)
 }
 
 @Test func pinsAutoUpdatesToSagoDropSigningIdentity() {

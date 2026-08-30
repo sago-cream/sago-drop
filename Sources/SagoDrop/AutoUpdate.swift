@@ -91,6 +91,13 @@ enum AutoUpdateStatus: Equatable, Sendable {
         case .idle, .upToDate, .updateAvailable: true
         }
     }
+
+    var shouldShowInMenu: Bool {
+        switch self {
+        case .updateAvailable, .downloading, .installing: true
+        case .idle, .checking, .upToDate: false
+        }
+    }
 }
 
 enum AutoUpdateCaskParser {
@@ -392,8 +399,11 @@ final class AutoUpdateStore {
     private static let lastCheckKey = "lastAutoUpdateCheck"
     private static let checkInterval: TimeInterval = 24 * 60 * 60
 
-    private(set) var status = AutoUpdateStatus.idle
+    private(set) var status = AutoUpdateStatus.idle {
+        didSet { onStatusChange?(status) }
+    }
     var onError: ((String) -> Void)?
+    var onStatusChange: ((AutoUpdateStatus) -> Void)?
 
     private let client: GitHubReleaseUpdateClient
     private let defaults: UserDefaults

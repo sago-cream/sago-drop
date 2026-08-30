@@ -92,6 +92,7 @@ final class UploadModel {
     var onMenuBarStateChange: ((MenuBarState) -> Void)?
     var onStatus: ((StatusNotice) -> Void)?
     var onPublicUploadDisclosure: ((Int) -> Bool)?
+    var onAuthenticationChange: ((Bool) -> Void)?
     var isSignedIn: Bool { (try? Keychain.load()) != nil }
     var discordUploadLimit: DiscordUploadLimit {
         get {
@@ -297,6 +298,7 @@ final class UploadModel {
                 NSSound.beep()
             }
             isUploading = false
+            onAuthenticationChange?(isSignedIn)
         }
     }
 
@@ -309,6 +311,7 @@ final class UploadModel {
             reportAttention(error.localizedDescription)
             NSSound.beep()
         }
+        onAuthenticationChange?(isSignedIn)
     }
 
     func report(_ status: String) {

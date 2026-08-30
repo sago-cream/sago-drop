@@ -54,20 +54,20 @@ Requirements:
 1. Open Sago Drop from Applications. It appears in the menu bar instead of the
    Dock. A short guide explains when Sago Drop copies an attachment and when it
    uploads a public link.
-2. To enable link fallback, choose **Sign In** from its menu.
+2. To enable link fallback, open **Settings…** and choose **Sign In…**.
 3. Approve the displayed request in your browser.
 
 Link uploads work once access is approved. Direct Discord attachments do not
 require a Sago Media account. The credential is saved in Keychain, so signing
 in is normally a one-time step.
 
-Choose **Open at Login** from the menu if you want Sago Drop to start when you
-log in to your Mac.
+Enable **Open at Login** in Settings if you want Sago Drop to start when you log
+in to your Mac.
 
-Open **How Sago Drop Works…** from the menu to see the guide again.
+Open **How Sago Drop Works…** from Settings to see the guide again.
 
-Sago Drop checks GitHub Releases once a day for signed updates. Choose **Check
-for Updates…** from the menu to check immediately.
+Sago Drop checks GitHub Releases once a day for signed updates. Open Settings
+and choose **Check for Updates…** to check immediately.
 
 ## Share
 
@@ -77,10 +77,10 @@ for Updates…** from the menu to check immediately.
   file in Downloads.
 - Choose **Share Files…** (`⌘O`) to use the standard file picker.
 
-Set **Discord Upload Limit** to Free, Nitro Basic, or Nitro. A single file that
-already fits is copied unchanged. Oversized video is compressed only when it
-can remain at 1080p or 720p. Everything else uses Sago Media. Multiple files
-continue through Sago Media.
+Set **Discord Upload Limit** in Settings to Free, Nitro Basic, or Nitro. A
+single file that already fits is copied unchanged. Oversized video is
+compressed only when it can remain at 1080p or 720p. Everything else uses Sago
+Media. Multiple files continue through Sago Media.
 
 The menu-bar icon shows conversion and upload progress. The five latest link
 uploads remain available under **Recent Uploads**.

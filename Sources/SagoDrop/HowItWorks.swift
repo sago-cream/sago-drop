@@ -78,7 +78,7 @@ struct HowItWorksView: View {
 
     private var footer: some View {
         HStack {
-            Text("Set your Discord limit and sign in from the menu.")
+            Text("Set your Discord limit and sign in from Settings.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
             Spacer()

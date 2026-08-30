@@ -12,6 +12,7 @@ swiftc \
   -D SAGO_DROP_MOCKUP \
   -parse-as-library \
   "$root/Sources/SagoDrop/HowItWorks.swift" \
+  "$root/Sources/SagoDrop/Settings.swift" \
   "$root/tools/MenuMockup.swift" \
   -o "$build_dir/sago-drop-menu-mockup"
 
@@ -20,3 +21,6 @@ swiftc \
 "$build_dir/sago-drop-menu-mockup" update-before "$output_dir/update-before.png"
 "$build_dir/sago-drop-menu-mockup" update-after "$output_dir/update-after.png"
 "$build_dir/sago-drop-menu-mockup" how-it-works "$output_dir/how-it-works.png"
+"$build_dir/sago-drop-menu-mockup" settings-before "$output_dir/settings-before.png"
+"$build_dir/sago-drop-menu-mockup" settings-after "$output_dir/settings-after.png"
+"$build_dir/sago-drop-menu-mockup" settings "$output_dir/settings.png"
