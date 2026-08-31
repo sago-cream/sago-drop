@@ -53,13 +53,7 @@ struct OnboardingView: View {
     }
 
     private var message: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Drag a file onto the menu bar icon, or copy or select one from the S menu.")
-
-            Text("Sago Drop keeps the original when it fits. If a video is too large, it compresses it on your Mac with little quality loss. If it still won't fit, Sago Drop can turn it into a public link after you connect to GitHub.")
-
-            Text("Either way, the result is copied to your clipboard. Boom! Paste it into Discord and send.")
-        }
+        Text("Drag a file onto the menu bar icon, or paste or select a file. If needed, your file will then be compressed with little quality loss, or turned into a public link when it's too large (you need to connect to GitHub for this). The result will then be copied to your clipboard. Boom! Now you can just paste and send it in Discord!")
         .font(.system(size: 12))
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -69,7 +63,7 @@ struct OnboardingView: View {
 
     private var footer: some View {
         HStack(spacing: 16) {
-            Text("Have something else stuck in your clipboard? Choose Save Clipboard or press ⌥⌘V to save it as a file.")
+            Text("For those files stuck in your clipboard, Sago Drop also helps you save them with an easy ⌥⌘V paste.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
