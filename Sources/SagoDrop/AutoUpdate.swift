@@ -91,6 +91,13 @@ enum AutoUpdateStatus: Equatable, Sendable {
         case .idle, .upToDate, .updateAvailable: true
         }
     }
+
+    var shouldShowInMenu: Bool {
+        switch self {
+        case .updateAvailable, .downloading, .installing: true
+        case .idle, .checking, .upToDate: false
+        }
+    }
 }
 
 enum AutoUpdateCaskParser {

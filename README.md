@@ -51,20 +51,22 @@ Requirements:
 
 ## First Run
 
-1. Open Sago Drop from Applications. It appears in the menu bar instead of the
-   Dock.
-2. To enable link fallback, choose **Sign In** from its menu.
+1. Open Sago Drop from Applications. It appears as an S in the menu bar instead
+   of the Dock. Its first window explains how to share a file and what Sago Drop
+   puts on your clipboard.
+2. To let files become public links when they cannot fit in Discord, choose
+   **Connect to GitHub…** from the S menu.
 3. Approve the displayed request in your browser.
 
 Link uploads work once access is approved. Direct Discord attachments do not
 require a Sago Media account. The credential is saved in Keychain, so signing
 in is normally a one-time step.
 
-Choose **Open at Login** from the menu if you want Sago Drop to start when you
+Enable **Open at Login** from the S menu if you want Sago Drop to start when you
 log in to your Mac.
 
-Sago Drop checks GitHub Releases once a day for signed updates. Choose **Check
-for Updates…** from the menu to check immediately.
+Sago Drop checks GitHub Releases once a day for signed updates. When an update
+is ready, **Update Available** appears in the S menu.
 
 ## Share
 
@@ -74,10 +76,10 @@ for Updates…** from the menu to check immediately.
   file in Downloads.
 - Choose **Share Files…** (`⌘O`) to use the standard file picker.
 
-Set **Discord Upload Limit** to Free, Nitro Basic, or Nitro. A single file that
-already fits is copied unchanged. Oversized video is compressed only when it
-can remain at 1080p or 720p. Everything else uses Sago Media. Multiple files
-continue through Sago Media.
+Set **Discord Upload Limit** from the S menu to Free, Nitro Basic, or Nitro. A
+single file that already fits is copied unchanged. Oversized video is compressed
+only when it can remain at 1080p or 720p. Everything else uses Sago Media.
+Multiple files continue through Sago Media.
 
 The menu-bar icon shows conversion and upload progress. The five latest link
 uploads remain available under **Recent Uploads**.
@@ -104,8 +106,8 @@ uploads remain available under **Recent Uploads**.
 
 ## Troubleshooting
 
-- **Sharing asks you to sign in:** The file could not fit the selected Discord
-  limit without dropping below 720p. Sign in to upload it as a link.
+- **Sharing asks you to connect to GitHub:** The file could not fit the selected
+  Discord limit without dropping below 720p. Connect to upload it as a link.
 - **A file is rejected:** Check its format and the limits above. MOV and MP4
   files are prepared locally; images must fit the upload limit already.
 - **Homebrew installed an older version:** Run `brew update`, then

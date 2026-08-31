@@ -2,8 +2,6 @@ import AppKit
 import SwiftUI
 
 private let scale: CGFloat = 2
-private let canvasSize = CGSize(width: 760, height: 450)
-private let renderedSize = CGSize(width: canvasSize.width * scale, height: canvasSize.height * scale)
 private let menuWidth: CGFloat = 250
 private let menuBarHeight: CGFloat = 30
 private let menuBarLogo = NSImage(contentsOfFile: "assets/sago-drop-mark.svg")
@@ -15,7 +13,7 @@ struct MenuMockup {
         let arguments = Array(CommandLine.arguments.dropFirst())
         guard arguments.count == 2,
               let state = MockupState(rawValue: arguments[0]) else {
-            fputs("Usage: MenuMockup <before|after|update-before|update-after> <output.png>\n", stderr)
+            fputs("Usage: MenuMockup <before|after|update-before|update-after|onboarding|menu> <output.png>\n", stderr)
             exit(2)
         }
 
@@ -34,9 +32,20 @@ private enum MockupState: String {
     case after
     case updateBefore = "update-before"
     case updateAfter = "update-after"
+    case onboarding
+    case menu
 
-    var usesSmartSharing: Bool { self != .before }
-    var showsAutoUpdate: Bool { self == .updateAfter }
+    var usesSmartSharing: Bool {
+        self != .before && self != .onboarding
+    }
+    var showsAutoUpdate: Bool {
+        self == .updateAfter || self == .menu
+    }
+    var canvasSize: CGSize {
+        self == .onboarding
+            ? CGSize(width: 760, height: 500)
+            : CGSize(width: 760, height: 450)
+    }
 }
 
 private struct MenuMockupView: View {
@@ -46,24 +55,33 @@ private struct MenuMockupView: View {
         ZStack(alignment: .topLeading) {
             DesktopBackground()
 
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .frame(height: menuBarHeight)
+            if state == .onboarding {
+                OnboardingView(
+                    appIcon: NSImage(contentsOfFile: "assets/sago-drop-logo.svg"),
+                    onDone: {}
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .position(x: state.canvasSize.width / 2, y: state.canvasSize.height / 2)
+            } else {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .frame(height: menuBarHeight)
 
-            statusItem
-                .position(x: 385, y: menuBarHeight / 2)
+                statusItem
+                    .position(x: 385, y: menuBarHeight / 2)
 
-            menu
-                .padding(.leading, 245)
-                .padding(.top, menuBarHeight + 1)
+                menu
+                    .padding(.leading, 245)
+                    .padding(.top, menuBarHeight + 1)
 
-            if state.usesSmartSharing {
-                discordLimitMenu
-                    .padding(.leading, 245 + menuWidth + 2)
-                    .padding(.top, menuBarHeight + 94)
+                if state.usesSmartSharing {
+                    discordLimitMenu
+                        .padding(.leading, 245 + menuWidth + 2)
+                        .padding(.top, menuBarHeight + 94)
+                }
             }
         }
-        .frame(width: canvasSize.width, height: canvasSize.height)
+        .frame(width: state.canvasSize.width, height: state.canvasSize.height)
         .preferredColorScheme(.dark)
     }
 
@@ -84,27 +102,44 @@ private struct MenuMockupView: View {
 
     private var menu: some View {
         VStack(spacing: 0) {
-            MenuRow(state.usesSmartSharing ? "Share Files…" : "Upload Files…", shortcut: "⌘O")
-            if state.usesSmartSharing {
+            if state == .menu {
                 MenuRow("Share Copied Files", shortcut: "⌘V")
-                MenuSeparator()
+                MenuRow("Share Files…", shortcut: "⌘O")
                 MenuRow("Save Clipboard", shortcut: "⌥⌘V")
-            } else {
-                MenuRow("Upload Copied Files", shortcut: "⇧⌘V")
-                MenuRow("Save Clipboard", shortcut: "⌘V")
-            }
-            MenuSeparator()
-            if state.usesSmartSharing {
-                MenuRow("Discord Upload Limit", shortcut: "›")
                 MenuSeparator()
+                MenuRow("Discord Upload Limit", shortcut: "›")
+                MenuRow("Connect to GitHub…")
+                MenuRow("✓  Open at Login")
+                if state.showsAutoUpdate {
+                    MenuRow("Update Available")
+                }
+                MenuSeparator()
+                MenuRow("Quit")
+            } else {
+                MenuRow(state.usesSmartSharing ? "Share Files…" : "Upload Files…", shortcut: "⌘O")
+                if state.usesSmartSharing {
+                    MenuRow("Share Copied Files", shortcut: "⌘V")
+                    MenuSeparator()
+                    MenuRow("Save Clipboard", shortcut: "⌥⌘V")
+                } else {
+                    MenuRow("Upload Copied Files", shortcut: "⇧⌘V")
+                    MenuRow("Save Clipboard", shortcut: "⌘V")
+                }
+                MenuSeparator()
+                if state.usesSmartSharing {
+                    MenuRow("Discord Upload Limit", shortcut: "›")
+                    MenuSeparator()
+                }
+                MenuRow("Sign In")
+                MenuSeparator()
+                MenuRow("Open at Login")
+                if state.showsAutoUpdate {
+                    MenuRow("Update Available")
+                }
+                MenuRow("How Sago Drop Works…")
+                MenuSeparator()
+                MenuRow("Quit")
             }
-            MenuRow("Sign In")
-            MenuSeparator()
-            MenuRow("Open at Login")
-            if state.showsAutoUpdate {
-                MenuRow("Update Available")
-            }
-            MenuRow("Quit")
         }
         .padding(.vertical, 5)
         .frame(width: menuWidth)
@@ -237,6 +272,10 @@ private final class CaptureController: NSObject, NSApplicationDelegate {
 
     private func makeWindow() throws -> NSWindow {
         guard let screen = NSScreen.main else { throw RenderError.missingScreen }
+        let renderedSize = CGSize(
+            width: state.canvasSize.width * scale,
+            height: state.canvasSize.height * scale
+        )
 
         let rootView = MenuMockupView(state: state)
             .scaleEffect(scale, anchor: .topLeading)
@@ -276,12 +315,18 @@ private final class CaptureController: NSObject, NSApplicationDelegate {
             guard let capture = windowCaptureFunction() else {
                 throw RenderError.missingCaptureFunction
             }
-            guard let image = capture(
-                .null,
-                CGWindowListOption.optionIncludingWindow.rawValue,
-                windowID,
-                CGWindowImageOption.boundsIgnoreFraming.rawValue
-            )?.takeRetainedValue() else {
+            var image: CGImage?
+            for _ in 0..<5 {
+                image = capture(
+                    .null,
+                    CGWindowListOption.optionIncludingWindow.rawValue,
+                    windowID,
+                    CGWindowImageOption.boundsIgnoreFraming.rawValue
+                )?.takeRetainedValue()
+                if image != nil { break }
+                RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.05))
+            }
+            guard let image else {
                 throw RenderError.captureFailed
             }
 
@@ -295,7 +340,6 @@ private final class CaptureController: NSObject, NSApplicationDelegate {
 
     private func fail(_ error: Error) -> Never {
         fputs("Menu mockup failed: \(error)\n", stderr)
-        NSApplication.shared.terminate(nil)
         exit(1)
     }
 }

@@ -52,6 +52,7 @@ final class MenuBarController: NSObject, ObservableObject {
 
     private let model: UploadModel
     private let autoUpdateStore = AutoUpdateStore()
+    private lazy var onboardingWindowController = OnboardingWindowController()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let menu = NSMenu()
     private var activityState = MenuBarState.idle
@@ -85,6 +86,19 @@ final class MenuBarController: NSObject, ObservableObject {
             model?.reportAttention(message)
         }
         autoUpdateStore.startAutomaticChecks()
+
+#if DEBUG
+        let isSmokeTest = ProcessInfo.processInfo.environment["SAGO_MEDIA_SMOKE_LOG"] == "1"
+#else
+        let isSmokeTest = false
+#endif
+        if !isSmokeTest, OnboardingPresentation.shouldShow() {
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                self?.onboardingWindowController.show()
+                OnboardingPresentation.markShown()
+            }
+        }
     }
 
     private func configureStatusItem() {
@@ -224,14 +238,13 @@ final class MenuBarController: NSObject, ObservableObject {
     private func rebuildMenu() {
         menu.removeAllItems()
 
-        menu.addItem(actionItem("Share Files…", action: #selector(chooseFiles), keyEquivalent: "o", enabled: !model.isUploading))
         menu.addItem(actionItem(
             "Share Copied Files",
             action: #selector(uploadCopiedFiles),
             keyEquivalent: "v",
             enabled: !model.isUploading
         ))
-        menu.addItem(.separator())
+        menu.addItem(actionItem("Share Files…", action: #selector(chooseFiles), keyEquivalent: "o", enabled: !model.isUploading))
         menu.addItem(actionItem(
             "Save Clipboard",
             action: #selector(downloadClipboard),
@@ -239,6 +252,20 @@ final class MenuBarController: NSObject, ObservableObject {
             modifiers: [.command, .option],
             enabled: !model.isUploading
         ))
+
+        if !model.recent.isEmpty {
+            menu.addItem(.separator())
+            let recentItem = NSMenuItem(title: "Recent Uploads", action: nil, keyEquivalent: "")
+            let recentMenu = NSMenu(title: "Recent Uploads")
+            for result in model.recent.prefix(5) {
+                let title = URL(string: result.url)?.lastPathComponent.removingPercentEncoding ?? result.url
+                let item = actionItem(title, action: #selector(copyRecentLink))
+                item.representedObject = result.url
+                recentMenu.addItem(item)
+            }
+            recentItem.submenu = recentMenu
+            menu.addItem(recentItem)
+        }
 
         menu.addItem(.separator())
         let discordLimitItem = NSMenuItem(title: "Discord Upload Limit", action: nil, keyEquivalent: "")
@@ -256,35 +283,24 @@ final class MenuBarController: NSObject, ObservableObject {
         discordLimitItem.submenu = discordLimitMenu
         menu.addItem(discordLimitItem)
 
-        if !model.recent.isEmpty {
-            menu.addItem(.separator())
-            let recentItem = NSMenuItem(title: "Recent Uploads", action: nil, keyEquivalent: "")
-            let recentMenu = NSMenu(title: "Recent Uploads")
-            for result in model.recent.prefix(5) {
-                let title = URL(string: result.url)?.lastPathComponent.removingPercentEncoding ?? result.url
-                let item = actionItem(title, action: #selector(copyRecentLink))
-                item.representedObject = result.url
-                recentMenu.addItem(item)
-            }
-            recentItem.submenu = recentMenu
-            menu.addItem(recentItem)
+        if model.isSignedIn {
+            menu.addItem(actionItem("Disconnect GitHub", action: #selector(signOut), enabled: !model.isUploading))
+        } else {
+            menu.addItem(actionItem("Connect to GitHub…", action: #selector(signIn), enabled: !model.isUploading))
         }
 
-        menu.addItem(.separator())
-        if model.isSignedIn {
-            menu.addItem(actionItem("Sign Out", action: #selector(signOut), enabled: !model.isUploading))
-        } else {
-            menu.addItem(actionItem("Sign In", action: #selector(signIn), enabled: !model.isUploading))
-        }
-        menu.addItem(.separator())
         let openAtLoginItem = actionItem("Open at Login", action: #selector(toggleOpenAtLogin))
         openAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
         menu.addItem(openAtLoginItem)
-        menu.addItem(actionItem(
-            autoUpdateStore.status.menuTitle,
-            action: #selector(activateAutoUpdate),
-            enabled: autoUpdateStore.status.canActivate
-        ))
+
+        if autoUpdateStore.status.shouldShowInMenu {
+            menu.addItem(actionItem(
+                autoUpdateStore.status.menuTitle,
+                action: #selector(activateAutoUpdate),
+                enabled: autoUpdateStore.status.canActivate
+            ))
+        }
+        menu.addItem(.separator())
         menu.addItem(actionItem("Quit", action: #selector(quit)))
     }
 
