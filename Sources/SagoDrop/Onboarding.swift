@@ -53,7 +53,7 @@ struct OnboardingView: View {
     }
 
     private var message: some View {
-        Text("Drag a file onto the menu bar icon, or paste or select a file. If needed, your file will then be compressed with little quality loss, or turned into a public link when it's too large (you need to connect to GitHub for this). The result will then be copied to your clipboard. Boom! Now you can just paste and send it in Discord!")
+        Text("Drag a file onto the menu bar icon, or paste or select a file. Your file will then be compressed with little quality loss, or turned into a public link when it's too large (you need to connect to GitHub for this). The result will then be copied to your clipboard. Boom! Now you can just paste and send it in Discord!")
         .font(.system(size: 12))
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
