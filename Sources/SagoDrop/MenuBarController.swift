@@ -69,6 +69,7 @@ final class MenuBarController: NSObject, ObservableObject {
         self.model = model
         super.init()
 
+        menu.delegate = self
         configureStatusItem()
         model.onMenuBarStateChange = { [weak self] state in
             self?.setActivityState(state)
@@ -434,6 +435,23 @@ final class MenuBarController: NSObject, ObservableObject {
 
     @objc private func quit() {
         NSApplication.shared.terminate(nil)
+    }
+}
+
+extension MenuBarController: NSMenuDelegate {
+    func menuHasKeyEquivalent(
+        _ menu: NSMenu,
+        for event: NSEvent,
+        target: AutoreleasingUnsafeMutablePointer<AnyObject?>,
+        action: UnsafeMutablePointer<Selector?>
+    ) -> Bool {
+        let shortcutModifiers: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+        let modifiers = event.modifierFlags.intersection(shortcutModifiers)
+        guard modifiers == [.command, .option],
+              event.charactersIgnoringModifiers?.lowercased() == "v" else { return false }
+        target.pointee = self
+        action.pointee = #selector(downloadClipboard)
+        return true
     }
 }
 
