@@ -2,22 +2,28 @@
 
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const smokeDirectory = await mkdtemp(join(tmpdir(), "sago-media-upload-smoke-"));
 const successFile = join(smokeDirectory, "progress-success.png");
 const failureFile = join(smokeDirectory, "progress-fail.png");
+const delayedFile = join(smokeDirectory, "progress-delayed.png");
 
 await Bun.write(successFile, new Uint8Array(12 * 1024 * 1024));
 await Bun.write(failureFile, new Uint8Array(6 * 1024 * 1024));
+await Bun.write(delayedFile, new Uint8Array(64 * 1024));
+
+const uploadCounts = new Map();
 
 const server = Bun.serve({
   hostname: "127.0.0.1",
   port: 0,
+  idleTimeout: 120,
   async fetch(request) {
     const filename = request.headers.get("x-media-filename") ?? "upload.bin";
+    uploadCounts.set(filename, (uploadCounts.get(filename) ?? 0) + 1);
     const reader = request.body?.getReader();
 
     if (reader) {
@@ -28,7 +34,8 @@ const server = Bun.serve({
       }
     }
 
-    await Bun.sleep(1200);
+    // Exceed URLRequest's default 60-second wait after the body is sent.
+    await Bun.sleep(filename.includes("delayed") ? 65_000 : 1200);
     if (filename.includes("fail")) {
       return new Response("Mock upload failed", { status: 500 });
     }
@@ -48,7 +55,8 @@ async function run(command) {
   if (exitCode !== 0) throw new Error(`${command.join(" ")} exited with ${exitCode}`);
 }
 
-async function runScenario(name, file, expectedMarkers) {
+async function runScenario(name, file, expectedMarkers, timeoutMs = 20_000) {
+  const startedAt = performance.now();
   const process = Bun.spawn([join(root, ".build/debug/SagoDrop")], {
     cwd: root,
     env: {
@@ -62,7 +70,7 @@ async function runScenario(name, file, expectedMarkers) {
     stderr: "pipe",
   });
 
-  const timeout = setTimeout(() => process.kill(), 20_000);
+  const timeout = setTimeout(() => process.kill(), timeoutMs);
   const [stdout, stderr, exitCode] = await Promise.all([
     new Response(process.stdout).text(),
     new Response(process.stderr).text(),
@@ -75,8 +83,12 @@ async function runScenario(name, file, expectedMarkers) {
   for (const marker of expectedMarkers) {
     if (!output.includes(marker)) throw new Error(`${name} missed "${marker}"\n${output}`);
   }
+  const filename = basename(file);
+  if (uploadCounts.get(filename) !== 1) {
+    throw new Error(`${name} expected one upload, received ${uploadCounts.get(filename) ?? 0}`);
+  }
 
-  console.log(`PASS ${name}`);
+  console.log(`PASS ${name} (${((performance.now() - startedAt) / 1000).toFixed(1)}s, one upload)`);
 }
 
 try {
@@ -96,6 +108,13 @@ try {
     "SMOKE state=failure",
     "SMOKE complete success=false",
   ]);
+  await runScenario("upload processing beyond 60 seconds", delayedFile, [
+    "SMOKE state=uploading",
+    "actual=none finishing=true",
+    "SMOKE progress displayed=1.0 actual=100 finishing=false",
+    "SMOKE state=success",
+    "SMOKE complete success=true",
+  ], 90_000);
 } finally {
   server.stop(true);
   await rm(smokeDirectory, { recursive: true, force: true });

@@ -405,7 +405,11 @@ struct MediaAPI {
 
     func upload(_ fileURL: URL, onProgress: @escaping @MainActor @Sendable (Double) -> Void) async throws -> UploadResult {
         guard let token = try uploadToken() else { throw MediaError.message("Sign in before uploading") }
-        var request = URLRequest(url: baseURL.appending(path: "/v1/uploads"))
+        // Allow the backend's 15-minute processing budget plus response overhead.
+        var request = URLRequest(
+            url: baseURL.appending(path: "/v1/uploads"),
+            timeoutInterval: 16 * 60
+        )
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")

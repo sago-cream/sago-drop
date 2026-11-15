@@ -138,6 +138,7 @@ scripts/smoke-upload-progress
 
 The suite uses a throttled localhost server and debug-only credentials to test
 successful and failed uploads without reading Keychain or creating public media.
+It includes a 65-second response delay to cover slow server processing.
 
 Generate matched menu screenshots for visual review:
 
