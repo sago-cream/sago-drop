@@ -100,6 +100,7 @@ Sago Drop** in the prompt. Older versions show a download link and Homebrew comm
 ## Formats and Limits
 
 - Direct Discord attachments use the selected 20 MB, 50 MB, or 500 MB limit.
+- MOV recordings are converted locally to MP4 before sharing.
 - Local video compression targets H.264/AAC MP4 and never drops below 720p.
 - Videos routed to Sago Media are normalized locally to 1080p H.264/AAC MP4
   and targeted below 80 MB before upload.

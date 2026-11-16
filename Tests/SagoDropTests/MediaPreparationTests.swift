@@ -135,6 +135,65 @@ import Testing
 }
 
 @MainActor
+@Test(arguments: [false, true])
+func preparesFullRangeHevcMovForPublicUpload(rotated: Bool) async throws {
+    let source = FileManager.default.temporaryDirectory
+        .appending(path: "sago-drop-portrait-\(UUID().uuidString).mov")
+    defer { try? FileManager.default.removeItem(at: source) }
+    try await createTestVideo(at: source, fileType: .mov, codec: .hevc,
+                              size: CGSize(width: 1316, height: 1462), fullRange: true, rotated: rotated, includeAudio: true)
+    let original = AVURLAsset(url: source)
+    let originalTrack = try #require(try await original.loadTracks(withMediaType: .video).first)
+    let originalFormat = try #require(try await originalTrack.load(.formatDescriptions).first)
+    #expect(CMFormatDescriptionGetMediaSubType(originalFormat) == kCMVideoCodecType_HEVC)
+    #expect(CMFormatDescriptionGetExtension(originalFormat, extensionKey: kCMFormatDescriptionExtension_FullRangeVideo) as? Bool == true)
+
+    let prepared = try await MediaPreparation.prepare(source)
+    defer { prepared.cleanUp() }
+    let asset = AVURLAsset(url: prepared.url)
+    let track = try #require(try await asset.loadTracks(withMediaType: .video).first)
+    let format = try #require(try await track.load(.formatDescriptions).first)
+    let size = try await track.load(.naturalSize)
+    #expect(CMFormatDescriptionGetMediaSubType(format) == kCMVideoCodecType_H264)
+    #expect(CMFormatDescriptionGetExtension(format, extensionKey: kCMFormatDescriptionExtension_FullRangeVideo) as? Bool != true)
+    #expect(min(size.width, size.height) <= 1080)
+    #expect(max(size.width, size.height) <= 1920)
+    #expect((size.width > size.height) == rotated)
+    let audio = try #require(try await asset.loadTracks(withMediaType: .audio).first)
+    let audioFormat = try #require(try await audio.load(.formatDescriptions).first)
+    #expect(CMFormatDescriptionGetMediaSubType(audioFormat) == kAudioFormatMPEG4AAC)
+    #expect(prepared.url.pathExtension == "mp4")
+    let metadata = try await asset.load(.commonMetadata)
+    #expect(AVMetadataItem.metadataItems(from: metadata, filteredByIdentifier: .commonIdentifierTitle).isEmpty)
+}
+
+@MainActor
+@Test func convertsSmallMovToMp4ForDiscord() async throws {
+    let source = FileManager.default.temporaryDirectory
+        .appending(path: "sago-drop-discord-\(UUID().uuidString).MOV")
+    defer { try? FileManager.default.removeItem(at: source) }
+    try await createTestVideo(at: source, fileType: .mov)
+    let prepared = try #require(try await MediaPreparation.prepareForDiscord(source, maximumBytes: 20_000_000))
+    defer { try? FileManager.default.removeItem(at: prepared.url.deletingLastPathComponent()) }
+    #expect(prepared.wasCompressed)
+    #expect(prepared.url.pathExtension == "mp4")
+    #expect(prepared.url != source)
+    let asset = AVURLAsset(url: prepared.url)
+    #expect(try await asset.load(.isPlayable))
+}
+
+@MainActor
+@Test func keepsCompatibleMp4ForDiscord() async throws {
+    let source = FileManager.default.temporaryDirectory
+        .appending(path: "sago-drop-discord-\(UUID().uuidString).mp4")
+    defer { try? FileManager.default.removeItem(at: source) }
+    try await createTestVideo(at: source)
+    let prepared = try #require(try await MediaPreparation.prepareForDiscord(source, maximumBytes: 20_000_000))
+    #expect(!prepared.wasCompressed)
+    #expect(prepared.url == source)
+}
+
+@MainActor
 @Test func acceptsLocallyPreparedVideoFormats() {
     let model = UploadModel()
 
@@ -203,8 +262,12 @@ import Testing
 }
 
 @MainActor
-private func createTestVideo(at url: URL) async throws {
-    let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+private func createTestVideo(
+    at url: URL, fileType: AVFileType = .mp4, codec: AVVideoCodecType = .h264,
+    size: CGSize = CGSize(width: 640, height: 480), fullRange: Bool = false, rotated: Bool = false,
+    includeAudio: Bool = false
+) async throws {
+    let writer = try AVAssetWriter(outputURL: url, fileType: fileType)
     let title = AVMutableMetadataItem()
     title.identifier = .commonIdentifierTitle
     title.value = "Private title" as NSString
@@ -212,24 +275,40 @@ private func createTestVideo(at url: URL) async throws {
     let input = AVAssetWriterInput(
         mediaType: .video,
         outputSettings: [
-            AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: 640,
-            AVVideoHeightKey: 480,
+            AVVideoCodecKey: codec,
+            AVVideoWidthKey: Int(size.width),
+            AVVideoHeightKey: Int(size.height),
         ]
     )
+    if rotated { input.transform = CGAffineTransform(rotationAngle: .pi / 2) }
     let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input)
     guard writer.canAdd(input) else { throw MediaError.message("Could not create test video") }
     writer.add(input)
+    let audioInput = includeAudio ? AVAssetWriterInput(mediaType: .audio, outputSettings: [
+        AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 48_000, AVNumberOfChannelsKey: 2,
+        AVLinearPCMBitDepthKey: 16, AVLinearPCMIsFloatKey: false, AVLinearPCMIsBigEndianKey: false,
+        AVLinearPCMIsNonInterleaved: false,
+    ]) : nil
+    if let audioInput {
+        #expect(writer.canAdd(audioInput))
+        writer.add(audioInput)
+    }
     writer.startWriting()
     writer.startSession(atSourceTime: .zero)
 
     var pixelBuffer: CVPixelBuffer?
-    guard CVPixelBufferCreate(nil, 640, 480, kCVPixelFormatType_32BGRA, nil, &pixelBuffer) == kCVReturnSuccess,
+    guard CVPixelBufferCreate(nil, Int(size.width), Int(size.height), fullRange ? kCVPixelFormatType_420YpCbCr8BiPlanarFullRange : kCVPixelFormatType_32BGRA, nil, &pixelBuffer) == kCVReturnSuccess,
           let pixelBuffer else {
         throw MediaError.message("Could not create test video frame")
     }
     CVPixelBufferLockBaseAddress(pixelBuffer, [])
-    if let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer) {
+    if CVPixelBufferIsPlanar(pixelBuffer) {
+        for plane in 0..<CVPixelBufferGetPlaneCount(pixelBuffer) {
+            if let base = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, plane) {
+                memset(base, 128, CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, plane) * CVPixelBufferGetHeightOfPlane(pixelBuffer, plane))
+            }
+        }
+    } else if let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer) {
         memset(baseAddress, 0, CVPixelBufferGetDataSize(pixelBuffer))
     }
     guard adaptor.append(pixelBuffer, withPresentationTime: .zero) else {
@@ -238,6 +317,31 @@ private func createTestVideo(at url: URL) async throws {
     }
     CVPixelBufferUnlockBaseAddress(pixelBuffer, [])
     input.markAsFinished()
+    if let audioInput {
+        var description = AudioStreamBasicDescription(mSampleRate: 48_000, mFormatID: kAudioFormatLinearPCM,
+            mFormatFlags: kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked,
+            mBytesPerPacket: 4, mFramesPerPacket: 1, mBytesPerFrame: 4, mChannelsPerFrame: 2,
+            mBitsPerChannel: 16, mReserved: 0)
+        var format: CMAudioFormatDescription?
+        #expect(CMAudioFormatDescriptionCreate(allocator: kCFAllocatorDefault, asbd: &description,
+            layoutSize: 0, layout: nil, magicCookieSize: 0, magicCookie: nil, extensions: nil,
+            formatDescriptionOut: &format) == noErr)
+        var block: CMBlockBuffer?
+        #expect(CMBlockBufferCreateWithMemoryBlock(allocator: kCFAllocatorDefault, memoryBlock: nil,
+            blockLength: 4800 * 4, blockAllocator: kCFAllocatorDefault, customBlockSource: nil,
+            offsetToData: 0, dataLength: 4800 * 4, flags: 0, blockBufferOut: &block) == noErr)
+        let audioBlock = try #require(block)
+        #expect(CMBlockBufferFillDataBytes(with: 0, blockBuffer: audioBlock, offsetIntoDestination: 0, dataLength: 4800 * 4) == noErr)
+        var timing = CMSampleTimingInfo(duration: CMTime(value: 1, timescale: 48_000), presentationTimeStamp: .zero, decodeTimeStamp: .invalid)
+        var sampleSize = 4
+        var sample: CMSampleBuffer?
+        #expect(CMSampleBufferCreateReady(allocator: kCFAllocatorDefault, dataBuffer: audioBlock,
+            formatDescription: try #require(format), sampleCount: 4800, sampleTimingEntryCount: 1,
+            sampleTimingArray: &timing, sampleSizeEntryCount: 1, sampleSizeArray: &sampleSize,
+            sampleBufferOut: &sample) == noErr)
+        #expect(audioInput.append(try #require(sample)))
+        audioInput.markAsFinished()
+    }
     await writer.finishWriting()
     if let error = writer.error { throw error }
 }
