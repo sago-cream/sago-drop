@@ -29,10 +29,10 @@ enum DiscordVideoPreset: Equatable {
     case p1080
     case p720
 
-    fileprivate var exportPreset: String {
+    fileprivate var maximumSize: CGSize {
         switch self {
-        case .p1080: AVAssetExportPreset1920x1080
-        case .p720: AVAssetExportPreset1280x720
+        case .p1080: CGSize(width: 1920, height: 1080)
+        case .p720: CGSize(width: 1280, height: 720)
         }
     }
 }
@@ -40,14 +40,6 @@ enum DiscordVideoPreset: Equatable {
 struct DiscordPreparedMedia {
     let url: URL
     let wasCompressed: Bool
-}
-
-private final class SendableExporter: @unchecked Sendable {
-    let value: AVAssetExportSession
-
-    init(_ value: AVAssetExportSession) {
-        self.value = value
-    }
 }
 
 enum MediaPreparation {
@@ -76,12 +68,11 @@ enum MediaPreparation {
         let compressedURL = FileManager.default.temporaryDirectory
             .appending(path: "sago-drop-\(identifier)-compressed.mp4")
         do {
-            try await export(
+            try await VideoTranscoder.export(
                 sourceURL,
                 to: compressedURL,
-                preset: AVAssetExportPreset1920x1080,
-                fileLengthLimit: compressionTargetBytes,
-                forceVideoEncoding: true
+                maximumSize: CGSize(width: 1920, height: 1080),
+                maximumBytes: compressionTargetBytes
             )
             let outputBytes = try fileSize(of: compressedURL)
             guard outputBytes <= maximumUploadBytes else {
@@ -108,7 +99,8 @@ enum MediaPreparation {
         }
 
         let asset = AVURLAsset(url: sourceURL)
-        if sourceBytes <= maximumBytes, try await isDiscordCompatible(asset) {
+        if sourceURL.pathExtension.lowercased() == "mp4",
+           sourceBytes <= maximumBytes, try await isDiscordCompatible(asset) {
             return DiscordPreparedMedia(url: sourceURL, wasCompressed: false)
         }
 
@@ -121,12 +113,11 @@ enum MediaPreparation {
 
         let outputURL = try cachedDiscordOutputURL(for: sourceURL)
         do {
-            try await export(
+            try await VideoTranscoder.export(
                 sourceURL,
                 to: outputURL,
-                preset: preset.exportPreset,
-                fileLengthLimit: Int64(Double(maximumBytes) * discordSafetyFactor),
-                forceVideoEncoding: true
+                maximumSize: preset.maximumSize,
+                maximumBytes: Int64(Double(maximumBytes) * discordSafetyFactor)
             )
             guard try fileSize(of: outputURL) <= maximumBytes else {
                 try? FileManager.default.removeItem(at: outputURL.deletingLastPathComponent())
@@ -165,50 +156,6 @@ enum MediaPreparation {
                 try? FileManager.default.removeItem(at: url)
             }
         }
-    }
-
-    private static func export(
-        _ sourceURL: URL,
-        to outputURL: URL,
-        preset: String,
-        fileLengthLimit: Int64? = nil,
-        forceVideoEncoding: Bool = false
-    ) async throws {
-        let asset = AVURLAsset(url: sourceURL)
-        guard let exporter = AVAssetExportSession(asset: asset, presetName: preset) else {
-            throw MediaError.message("This video format is not supported")
-        }
-
-        exporter.shouldOptimizeForNetworkUse = true
-        exporter.metadata = []
-        if let fileLengthLimit { exporter.fileLengthLimit = fileLengthLimit }
-        if forceVideoEncoding {
-            exporter.videoComposition = try await AVVideoComposition.videoComposition(withPropertiesOf: asset)
-        }
-
-        if #available(macOS 15.0, *) {
-            try await exporter.export(to: outputURL, as: .mp4)
-        } else {
-            exporter.outputURL = outputURL
-            exporter.outputFileType = .mp4
-            let sendableExporter = SendableExporter(exporter)
-            try await withCheckedThrowingContinuation { continuation in
-                sendableExporter.value.exportAsynchronously {
-                    switch sendableExporter.value.status {
-                    case .completed:
-                        continuation.resume()
-                    case .cancelled:
-                        continuation.resume(throwing: CancellationError())
-                    default:
-                        continuation.resume(throwing: sendableExporter.value.error ?? MediaError.message("Video conversion failed"))
-                    }
-                }
-            }
-        }
-
-        let movie = AVMutableMovie(url: outputURL, options: nil)
-        movie.metadata = []
-        try movie.writeHeader(to: outputURL, fileType: .mp4, options: .addMovieHeaderToDestination)
     }
 
     private static func cachedDiscordOutputURL(for sourceURL: URL) throws -> URL {
