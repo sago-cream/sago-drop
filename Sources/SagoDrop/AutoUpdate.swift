@@ -95,7 +95,7 @@ enum AutoUpdateStatus: Equatable, Sendable {
     var shouldShowInMenu: Bool {
         switch self {
         case .updateAvailable, .downloading, .installing: true
-        case .idle, .checking, .upToDate: false
+        case .idle, .checking, .upToDate: true
         }
     }
 }
@@ -468,6 +468,15 @@ final class AutoUpdateStore {
         } catch {
             status = .idle
             if isUserInitiated { onError?(Self.message(for: error)) }
+        }
+    }
+
+    func updateRequired() async {
+        await checkForUpdates(isUserInitiated: true)
+        if case .updateAvailable = status {
+            await installAvailableUpdate()
+        } else if status == .upToDate {
+            onError?("The service requires a newer app. Download the latest release from github.com/sago-cream/sago-drop/releases/latest.")
         }
     }
 

@@ -84,6 +84,19 @@ Multiple files continue through Sago Media.
 The menu-bar icon shows conversion and upload progress. The five latest link
 uploads remain available under **Recent Uploads**.
 
+## Reliable Uploads and Updates
+
+Public uploads are saved as jobs before server processing begins. Sago Drop stays
+on **Finishing…** until the public link is available and copied. The checkmark
+means you can paste and send. Pending jobs resume when the app reopens; choose
+**Retry Pending Uploads** after a connection failure. Prepared files remain in
+Application Support until sharing succeeds or the server reports a final failure.
+
+Choose **Check for Updates…** in the menu at any time. When an update is available,
+choose **Update Available** to download, verify, install, and relaunch the app.
+Checks also run daily. If the server requires a newer version, choose **Update
+Sago Drop** in the prompt. Older versions show a download link and Homebrew command.
+
 ## Formats and Limits
 
 - Direct Discord attachments use the selected 20 MB, 50 MB, or 500 MB limit.
@@ -100,7 +113,7 @@ uploads remain available under **Recent Uploads**.
 - Prepared Discord attachments remain in the app cache so they are still
   available when pasted. Sago Drop removes entries older than one day when it
   launches or prepares another attachment.
-- Files are uploaded to `media.hsichen.dev` and receive a public share URL.
+- Files are uploaded to `media.sagocream.com` and receive a public share URL.
 - Sago Drop asks for confirmation before the first public link upload.
 - Sago Drop has no analytics or background file scanning.
 
@@ -138,6 +151,8 @@ scripts/smoke-upload-progress
 
 The suite uses a throttled localhost server and debug-only credentials to test
 successful and failed uploads without reading Keychain or creating public media.
+It covers processing beyond two minutes, lost acknowledgements, app restart
+recovery, and completion only after the public link is available and copied.
 
 Generate matched menu screenshots for visual review:
 

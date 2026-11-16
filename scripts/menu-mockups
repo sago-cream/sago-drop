@@ -12,6 +12,7 @@ swiftc \
   -D SAGO_DROP_MOCKUP \
   -parse-as-library \
   "$root/Sources/SagoDrop/Onboarding.swift" \
+  "$root/Sources/SagoDrop/UpdateRequiredPresentation.swift" \
   "$root/tools/MenuMockup.swift" \
   -o "$build_dir/sago-drop-menu-mockup"
 
@@ -21,3 +22,7 @@ swiftc \
 "$build_dir/sago-drop-menu-mockup" update-after "$output_dir/update-after.png"
 "$build_dir/sago-drop-menu-mockup" onboarding "$output_dir/onboarding.png"
 "$build_dir/sago-drop-menu-mockup" menu "$output_dir/menu.png"
+
+"$build_dir/sago-drop-menu-mockup" update-required "$output_dir/update-required.png"
+
+"$build_dir/sago-drop-menu-mockup" pending "$output_dir/pending.png"

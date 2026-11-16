@@ -83,6 +83,7 @@ final class MenuBarController: NSObject, ObservableObject {
         model.onPublicUploadDisclosure = { [weak self] fileCount in
             self?.presentPublicUploadDisclosure(fileCount: fileCount) ?? false
         }
+        model.onUpdateRequired = { [weak self] in self?.presentUpdateRequired() }
         autoUpdateStore.onError = { [weak model] message in
             model?.reportAttention(message)
         }
@@ -268,6 +269,9 @@ final class MenuBarController: NSObject, ObservableObject {
             menu.addItem(recentItem)
         }
 
+        if model.hasPendingUploads {
+            menu.addItem(actionItem("Retry Pending Uploads", action: #selector(retryPendingUploads), enabled: !model.isUploading))
+        }
         menu.addItem(.separator())
         let discordLimitItem = NSMenuItem(title: "Discord Upload Limit", action: nil, keyEquivalent: "")
         let discordLimitMenu = NSMenu(title: "Discord Upload Limit")
@@ -298,7 +302,7 @@ final class MenuBarController: NSObject, ObservableObject {
             menu.addItem(actionItem(
                 autoUpdateStore.status.menuTitle,
                 action: #selector(activateAutoUpdate),
-                enabled: autoUpdateStore.status.canActivate
+                enabled: autoUpdateStore.status.canActivate && !model.isUploading
             ))
         }
         menu.addItem(.separator())
@@ -363,6 +367,17 @@ final class MenuBarController: NSObject, ObservableObject {
             statusAlertCanBeSuppressed = false
         }
     }
+
+    private func presentUpdateRequired() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let alert = UpdateRequiredPresentation.makeAlert(icon: AppResources.appIcon)
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            if alert.runModal() == .alertFirstButtonReturn { await autoUpdateStore.updateRequired() }
+        }
+    }
+
+    @objc private func retryPendingUploads() { model.resumePendingUploads() }
 
     private func presentPublicUploadDisclosure(fileCount: Int) -> Bool {
         let alert = NSAlert()

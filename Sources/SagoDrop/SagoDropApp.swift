@@ -28,6 +28,7 @@ final class SagoDropAppDelegate: NSObject, NSApplicationDelegate {
         MediaPreparation.cleanUpDiscordCache()
         let model = UploadModel()
         menuBarController = MenuBarController(model: model)
+        model.resumePendingUploads()
 #if DEBUG
         if let testFile = ProcessInfo.processInfo.environment["SAGO_MEDIA_SMOKE_FILE"] {
             model.onSmokeTestComplete = { succeeded in
@@ -105,6 +106,9 @@ final class UploadModel {
     var onSmokeTestComplete: ((Bool) -> Void)?
 #endif
     private let api = MediaAPI()
+    private let pendingUploads = PendingUploadStore()
+    var hasPendingUploads: Bool { ((try? pendingUploads.all()) ?? []).isEmpty == false }
+    var onUpdateRequired: (() -> Void)?
     private let supportedExtensions = Set(["gif", "jpeg", "jpg", "mov", "mp4", "png", "webp"])
     private var processingStartedAt: Date?
 
@@ -217,6 +221,7 @@ final class UploadModel {
             }
 
             var failed = false
+            var needsUpdate = false
             var completionStatus = message
             var failureStatus: String?
             for url in urls {
@@ -230,7 +235,8 @@ final class UploadModel {
                     onMenuBarStateChange?(.uploading)
                     processingStartedAt = nil
                     onUploadProgressChange?(.transferring(0))
-                    let result = try await api.upload(prepared.url) { [weak self] progress in
+                    let pending = try pendingUploads.stage(prepared.url, filename: url.lastPathComponent, baseURL: api.baseURL)
+                    let result = try await finishPending(pending) { [weak self] progress in
                         guard let self else { return }
                         let percentage = Int((progress * 100).rounded())
                         message = progress < 1
@@ -254,21 +260,30 @@ final class UploadModel {
                     try? await Task.sleep(for: .milliseconds(150))
                     onUploadProgressChange?(nil)
                     processingStartedAt = nil
+                    guard copy(result.url) else { throw MediaError.message("Couldn’t copy the link. Choose Retry Pending Uploads.") }
+                    try pendingUploads.remove(pending)
                     recent.insert(result, at: 0)
-                    copy(result.url)
+#if DEBUG
+                    smokeLog("clipboard=\(NSPasteboard.general.string(forType: .string) ?? "")")
+#endif
                     completionStatus = "Copied \(url.lastPathComponent)"
                     message = completionStatus
                 } catch {
                     failed = true
                     processingStartedAt = nil
                     onUploadProgressChange?(nil)
+#if DEBUG
+                    smokeLog("upload-error=\(String(reflecting: error))")
+#endif
                     failureStatus = error.localizedDescription
                     message = error.localizedDescription
+                    if case MediaError.updateRequired = error { needsUpdate = true }
                     NSSound.beep()
                 }
             }
             isUploading = false
-            if let failureStatus {
+            if needsUpdate { onUpdateRequired?() }
+            else if let failureStatus {
                 reportAttention(failureStatus)
             } else {
                 report(completionStatus)
@@ -321,9 +336,55 @@ final class UploadModel {
         onStatus?(.attention(status))
     }
 
-    func copy(_ value: String) {
+    @discardableResult
+    func copy(_ value: String) -> Bool {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(value, forType: .string)
+        return NSPasteboard.general.setString(value, forType: .string)
+    }
+
+    private func finishPending(_ pending: PendingUpload, onProgress: @escaping @MainActor @Sendable (Double) -> Void) async throws -> UploadResult {
+        do { return try await api.finish(pending, onProgress: onProgress) }
+        catch let error as MediaError {
+            if case .jobFailed = error { try pendingUploads.remove(pending) }
+            throw error
+        }
+    }
+
+    func resumePendingUploads() {
+        guard !isUploading else { return }
+        let pending: [PendingUpload]
+        do { pending = try pendingUploads.all() }
+        catch { reportAttention("Couldn’t restore pending uploads"); return }
+        guard !pending.isEmpty else { return }
+        isUploading = true
+        onMenuBarStateChange?(.uploading)
+        Task {
+            var failed = false
+            for upload in pending {
+                do {
+                    message = "Finishing \(upload.filename)…"
+                    onUploadProgressChange?(.processing)
+                    let result = try await finishPending(upload) { [weak self] _ in self?.onUploadProgressChange?(.processing) }
+                    guard copy(result.url) else { throw MediaError.message("Couldn’t copy the link. Choose Retry Pending Uploads.") }
+                    try pendingUploads.remove(upload)
+                    recent.insert(result, at: 0)
+                    report("Copied \(upload.filename)")
+                } catch {
+                    failed = true
+                    if case MediaError.updateRequired = error { onUpdateRequired?() }
+                    else { reportAttention(error.localizedDescription) }
+                }
+            }
+            isUploading = false
+            onUploadProgressChange?(nil)
+#if DEBUG
+            smokeLog("clipboard=\(NSPasteboard.general.string(forType: .string) ?? "")")
+#endif
+            onMenuBarStateChange?(failed ? .failure : .success)
+#if DEBUG
+            onSmokeTestComplete?(!failed)
+#endif
+        }
     }
 
     private func copyFile(_ url: URL) throws {
@@ -344,118 +405,6 @@ final class UploadModel {
         isUploading = false
         message = "Sharing cancelled"
         onMenuBarStateChange?(.idle)
-    }
-}
-
-struct DeviceRequest: Decodable {
-    let deviceCode: String
-    let deviceSecret: String
-    let userCode: String
-    let verificationUri: URL
-    let expiresIn: Int
-    let interval: Int
-}
-
-private struct DeviceStatus: Decodable {
-    let status: String
-    let token: String?
-    let scope: String?
-}
-
-enum MediaError: LocalizedError {
-    case message(String)
-
-    var errorDescription: String? {
-        switch self { case .message(let message): message }
-    }
-}
-
-struct MediaAPI {
-    private let baseURL: URL
-    private let session: URLSession
-
-    init(baseURL: URL = URL(string: ProcessInfo.processInfo.environment["MEDIA_URL"] ?? "https://media.hsichen.dev")!, session: URLSession = .shared) {
-        self.baseURL = baseURL
-        self.session = session
-    }
-
-    func startLogin() async throws -> DeviceRequest {
-        var request = URLRequest(url: baseURL.appending(path: "/v1/auth/device"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["deviceName": Host.current().localizedName ?? "Mac"])
-        return try await send(request, as: DeviceRequest.self)
-    }
-
-    func waitForApproval(_ device: DeviceRequest) async throws -> String {
-        let deadline = Date().addingTimeInterval(TimeInterval(device.expiresIn))
-        while Date() < deadline {
-            try await Task.sleep(for: .seconds(device.interval))
-            var request = URLRequest(url: baseURL.appending(path: "/v1/auth/device/\(device.deviceCode)"))
-            request.setValue("Device \(device.deviceSecret)", forHTTPHeaderField: "Authorization")
-            let status = try await send(request, as: DeviceStatus.self, acceptedStatuses: 200...499)
-            if status.status == "approved", let token = status.token {
-                try Keychain.save(token)
-                return status.scope ?? "upload"
-            }
-            if status.status == "denied" { throw MediaError.message("Access was denied") }
-        }
-        throw MediaError.message("The access request expired")
-    }
-
-    func upload(_ fileURL: URL, onProgress: @escaping @MainActor @Sendable (Double) -> Void) async throws -> UploadResult {
-        guard let token = try uploadToken() else { throw MediaError.message("Sign in before uploading") }
-        var request = URLRequest(url: baseURL.appending(path: "/v1/uploads"))
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
-        request.setValue(fileURL.lastPathComponent, forHTTPHeaderField: "X-Media-Filename")
-        let delegate = UploadProgressDelegate(onProgress: onProgress)
-        let (data, response) = try await session.upload(for: request, fromFile: fileURL, delegate: delegate)
-        return try decode(data, response: response, as: UploadResult.self)
-    }
-
-    private func uploadToken() throws -> String? {
-#if DEBUG
-        if let smokeToken = ProcessInfo.processInfo.environment["SAGO_MEDIA_SMOKE_TOKEN"] {
-            return smokeToken
-        }
-#endif
-        return try Keychain.load()
-    }
-
-    private func send<Value: Decodable>(_ request: URLRequest, as type: Value.Type, acceptedStatuses: ClosedRange<Int> = 200...299) async throws -> Value {
-        let (data, response) = try await session.data(for: request)
-        return try decode(data, response: response, as: type, acceptedStatuses: acceptedStatuses)
-    }
-
-    private func decode<Value: Decodable>(_ data: Data, response: URLResponse, as type: Value.Type, acceptedStatuses: ClosedRange<Int> = 200...299) throws -> Value {
-        guard let http = response as? HTTPURLResponse, acceptedStatuses.contains(http.statusCode) else {
-            let detail = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
-            throw MediaError.message(detail?.isEmpty == false ? detail! : "Sago Drop request failed")
-        }
-        do { return try JSONDecoder().decode(type, from: data) }
-        catch { throw MediaError.message("Sago Drop returned an invalid response") }
-    }
-}
-
-private final class UploadProgressDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
-    private let onProgress: @MainActor @Sendable (Double) -> Void
-
-    init(onProgress: @escaping @MainActor @Sendable (Double) -> Void) {
-        self.onProgress = onProgress
-    }
-
-    func urlSession(
-        _ session: URLSession,
-        task: URLSessionTask,
-        didSendBodyData bytesSent: Int64,
-        totalBytesSent: Int64,
-        totalBytesExpectedToSend: Int64
-    ) {
-        guard totalBytesExpectedToSend > 0 else { return }
-        let progress = min(1, max(0, Double(totalBytesSent) / Double(totalBytesExpectedToSend)))
-        Task { @MainActor [onProgress] in onProgress(progress) }
     }
 }
 
