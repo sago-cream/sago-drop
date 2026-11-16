@@ -33,3 +33,12 @@ import Testing
     }
     #expect(try store.all().isEmpty)
 }
+
+@Test func buildsExactApiPathsWithoutDirectorySlashes() {
+    for origin in ["https://media.example.test", "https://media.example.test/"] {
+        let api = MediaAPI(baseURL: URL(string: origin)!)
+        #expect(api.endpoint("/v1/upload-jobs").absoluteString == "https://media.example.test/v1/upload-jobs")
+        #expect(api.endpoint("v1/upload-jobs/123").path == "/v1/upload-jobs/123")
+        #expect(!api.endpoint("v1/upload-jobs").hasDirectoryPath)
+    }
+}

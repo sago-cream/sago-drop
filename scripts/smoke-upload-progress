@@ -33,7 +33,7 @@ const server = Bun.serve({
       if (Date.now() - started > 500) slowStatusRequests = true;
       return result;
     }
-    if (request.method !== "POST" || path !== "/v1/upload-jobs") return new Response("Not found", { status: 404 });
+    if (request.method !== "POST" || path !== "/v1/upload-jobs") return new Response(`Not found: ${request.method} ${path}`, { status: 404 });
     const filename = request.headers.get("x-media-filename");
     const key = request.headers.get("idempotency-key");
     uploads.set(filename, (uploads.get(filename) ?? 0) + 1);

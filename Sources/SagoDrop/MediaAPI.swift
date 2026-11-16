@@ -34,8 +34,14 @@ struct MediaAPI {
         self.session = session
     }
 
+    func endpoint(_ path: String) -> URL {
+        path.split(separator: "/").reduce(baseURL) { url, component in
+            url.appendingPathComponent(String(component), isDirectory: false)
+        }
+    }
+
     func startLogin() async throws -> DeviceRequest {
-        var request = URLRequest(url: baseURL.appending(path: "/v1/auth/device"))
+        var request = URLRequest(url: endpoint("v1/auth/device"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: ["deviceName": Host.current().localizedName ?? "Mac"])
@@ -46,7 +52,7 @@ struct MediaAPI {
         let deadline = Date().addingTimeInterval(TimeInterval(device.expiresIn))
         while Date() < deadline {
             try await Task.sleep(for: .seconds(device.interval))
-            var request = URLRequest(url: baseURL.appending(path: "/v1/auth/device/\(device.deviceCode)"))
+            var request = URLRequest(url: endpoint("v1/auth/device/\(device.deviceCode)"))
             request.setValue("Device \(device.deviceSecret)", forHTTPHeaderField: "Authorization")
             let status = try await send(request, as: DeviceStatus.self, acceptedStatuses: 200...499)
             if status.status == "approved", let token = status.token {
@@ -61,7 +67,7 @@ struct MediaAPI {
     func finish(_ pending: PendingUpload, onProgress: @escaping @MainActor @Sendable (Double) -> Void) async throws -> UploadResult {
         guard pending.baseURL == baseURL else { throw MediaError.message("This upload belongs to a different media server") }
         guard let token = try uploadToken() else { throw MediaError.message("Connect to GitHub to finish your upload") }
-        let statusURL = baseURL.appending(path: "/v1/upload-jobs/\(pending.id)")
+        let statusURL = endpoint("v1/upload-jobs/\(pending.id)")
         let deadline = Date().addingTimeInterval(20 * 60)
         var lastError: Error?
         var isFinishing = false
@@ -74,7 +80,7 @@ struct MediaAPI {
                 let (data, response) = try await session.data(for: statusRequest)
                 var job: UploadJob
                 if (response as? HTTPURLResponse)?.statusCode == 404 {
-                    var request = URLRequest(url: baseURL.appending(path: "/v1/upload-jobs"), timeoutInterval: 60)
+                    var request = URLRequest(url: endpoint("v1/upload-jobs"), timeoutInterval: 60)
                     request.httpMethod = "POST"
                     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                     request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
