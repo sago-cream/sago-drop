@@ -272,6 +272,9 @@ final class UploadModel {
                     failed = true
                     processingStartedAt = nil
                     onUploadProgressChange?(nil)
+#if DEBUG
+                    smokeLog("upload-error=\(String(reflecting: error))")
+#endif
                     failureStatus = error.localizedDescription
                     message = error.localizedDescription
                     if case MediaError.updateRequired = error { needsUpdate = true }
