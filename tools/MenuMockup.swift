@@ -34,12 +34,14 @@ private enum MockupState: String {
     case updateAfter = "update-after"
     case onboarding
     case menu
+    case pending
+    case updateRequired = "update-required"
 
     var usesSmartSharing: Bool {
         self != .before && self != .onboarding
     }
     var showsAutoUpdate: Bool {
-        self == .updateAfter || self == .menu
+        self == .updateAfter || self == .menu || self == .pending
     }
     var canvasSize: CGSize {
         self == .onboarding
@@ -102,16 +104,17 @@ private struct MenuMockupView: View {
 
     private var menu: some View {
         VStack(spacing: 0) {
-            if state == .menu {
+            if state == .menu || state == .pending {
                 MenuRow("Share Copied Files", shortcut: "⌘V")
                 MenuRow("Share Files…", shortcut: "⌘O")
                 MenuRow("Save Clipboard", shortcut: "⌥⌘V")
+                if state == .pending { MenuRow("Retry Pending Uploads") }
                 MenuSeparator()
                 MenuRow("Discord Upload Limit", shortcut: "›")
                 MenuRow("Connect to GitHub…")
                 MenuRow("✓  Open at Login")
                 if state.showsAutoUpdate {
-                    MenuRow("Update Available")
+                    MenuRow("Check for Updates…")
                 }
                 MenuSeparator()
                 MenuRow("Quit")
@@ -272,6 +275,14 @@ private final class CaptureController: NSObject, NSApplicationDelegate {
 
     private func makeWindow() throws -> NSWindow {
         guard let screen = NSScreen.main else { throw RenderError.missingScreen }
+        if state == .updateRequired {
+            let alert = UpdateRequiredPresentation.makeAlert(icon: NSImage(contentsOfFile: "assets/sago-drop-logo.svg"))
+            alert.layout()
+            let window = alert.window
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.center()
+            return window
+        }
         let renderedSize = CGSize(
             width: state.canvasSize.width * scale,
             height: state.canvasSize.height * scale
